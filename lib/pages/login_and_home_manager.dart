@@ -59,7 +59,9 @@ class _LoginAndHomeManagerState extends State<LoginAndHomeManager> {
     {
         _isAuthenticated = false;
     }
-    setState(() => _isAuthenticated = loggedIn);
+    setState(() {
+
+    });
   }
 
   void _onLoginSuccess() {
