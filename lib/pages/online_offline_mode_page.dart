@@ -16,8 +16,9 @@ class _OnlineOfflineModePageState extends State<OnlineOfflineModePage> {
   // final String _webMapItemId = 'acc027394bc84c2fb04d1ed317aac674';
   final Uri _portalUri = Uri.parse('https://gis.mjpdpms.in/agportal/');
   final String _webMapItemId = 'e8e7e57251f04268a74bef95768071da';
+  // final String _webMapItemId = 'f6d825906df147e7b850d47a77b6b25b';
   // final String _webMapItemId = '3509bd476c4f40839dc7600da3ab2b91';
-  // final String _webMapItemId = '2d27189787b34fc39dfa7526e01aaf8a';
+  // final String _webMapItemId = '36e514110a854b8d9135b3ed1321440c';
 
   @override
   Widget build(BuildContext context) {

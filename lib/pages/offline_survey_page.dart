@@ -86,10 +86,8 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
                         onMapViewReady: onMapViewReady,
                         onTap: _handleMapTap,
                       ),
-                      // Add a red outline that marks the region to be taken offline.
                       Visibility(
-                        visible:
-                            _progress == null && !_offline && !_hasLocalMap,
+                        visible: _progress == null && !_offline,
                         child: IgnorePointer(
                           child: SafeArea(
                             child: Container(
@@ -107,6 +105,34 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
                           ),
                         ),
                       ),
+                      // Add a red outline that marks the region to be taken offline.
+        // Visibility(
+        //   visible: _progress == null && !_offline && !_hasLocalMap,
+        //   child: IgnorePointer(
+        //     child: SafeArea(
+        //       child: LayoutBuilder(
+        //         builder: (context, constraints) {
+        //           // Optionally you can log or interact with the widget size here
+        //           final double containerSize = 200.0; // Or any dynamic size you want to use here
+        //
+        //           return Center(
+        //             child: Container(
+        //               key: _outlineKey,
+        //               width: containerSize,
+        //               height: containerSize,
+        //               decoration: BoxDecoration(
+        //                 border: Border.all(
+        //                   color: Colors.red,
+        //                   width: 2,
+        //                 ),
+        //               ),
+        //             ),
+        //           );
+        //         },
+        //       ),
+        //     ),
+        //   ),
+        // ),
                     ],
                   ),
                 ),
@@ -312,127 +338,6 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
     }
   }
 
-  // void _showFeatureActionPopup(ArcGISFeature feature, FeatureLayer featureLayer) {
-  //   showModalBottomSheet(
-  //     context: context,
-  //     builder: (BuildContext context) {
-  //       return SafeArea(
-  //         child: Column(
-  //           mainAxisSize: MainAxisSize.min,
-  //           children: <Widget>[
-  //             ListTile(
-  //               leading: const Icon(Icons.edit),
-  //               title: const Text('Update Feature'),
-  //               onTap: () {
-  //                 Navigator.pop(context); // Close the bottom sheet
-  //                 // _openAttributeEditForm(feature, featureLayer);
-  //               },
-  //             ),
-  //             ListTile(
-  //               leading: const Icon(Icons.delete, color: Colors.red),
-  //               title: const Text('Delete Feature', style: TextStyle(color: Colors.red)),
-  //               onTap: () {
-  //                 Navigator.pop(context); // Close the bottom sheet
-  //                 _deleteFeature(feature, featureLayer);
-  //               },
-  //             ),
-  //           ],
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
-  //
-  // Future<void> _deleteFeature(ArcGISFeature feature, FeatureLayer featureLayer) async {
-  //   final confirmed = await showDialog<bool>(
-  //     context: context,
-  //     builder: (BuildContext context) {
-  //       return AlertDialog(
-  //         title: const Text('Confirm Deletion'),
-  //         content: const Text('Are you sure you want to delete this feature? This action cannot be undone.'),
-  //         actions: <Widget>[
-  //           TextButton(
-  //             child: const Text('Cancel'),
-  //             onPressed: () {
-  //               Navigator.of(context).pop(false);
-  //             },
-  //           ),
-  //           TextButton(
-  //             style: TextButton.styleFrom(
-  //               foregroundColor: Colors.red,
-  //             ),
-  //             child: const Text('Delete'),
-  //             onPressed: () {
-  //               Navigator.of(context).pop(true);
-  //             },
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   ) ?? false;
-  //
-  //   if (!confirmed) {
-  //     return;
-  //   }
-  //
-  //   try {
-  //     if (featureLayer.featureTable is GeodatabaseFeatureTable) {
-  //       setState(() => _loadingFeature = true);
-  //       final geodatabaseFeatureTable =
-  //       featureLayer.featureTable as GeodatabaseFeatureTable;
-  //       await geodatabaseFeatureTable.deleteFeature(feature);
-  //
-  //       // Clear selection and notify user
-  //       featureLayer.clearSelection();
-  //       if (mounted) {
-  //         ScaffoldMessenger.of(context).showSnackBar(
-  //             const SnackBar(content: Text('Feature deleted successfully.')));
-  //       }
-  //     } else {
-  //       if (mounted) {
-  //         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-  //             content: Text('Deletion is not supported for this layer.')));
-  //       }
-  //     }
-  //   } catch (e) {
-  //     debugPrint("Delete failed: $e");
-  //     if (mounted) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //           SnackBar(content: Text('Failed to delete feature: $e')));
-  //     }
-  //   } finally {
-  //     setState(() => _loadingFeature = false);
-  //   }
-  // }
-
-  // Future<void> _openAttributeEditForm(
-  //     ArcGISFeature feature,
-  //     FeatureLayer layer,
-  //     ) async {
-  //   await showModalBottomSheet(
-  //     context: context,
-  //     isScrollControlled: true,
-  //     builder: (context) => Padding(
-  //       padding: MediaQuery.of(context).viewInsets,
-  //       child: AttributeEditForm(
-  //         feature: feature,
-  //         featureTable: layer.featureTable! as GeodatabaseFeatureTable,
-  //         onFormSaved: () {
-  //           Navigator.pop(context);
-  //           if (mounted) {
-  //             ScaffoldMessenger.of(context).showSnackBar(
-  //               const SnackBar(
-  //                 content: Text('Feature successfully updated'),
-  //               ),
-  //             );
-  //           }
-  //         },
-  //         parentScaffoldContext: context,
-  //       ),
-  //     ),
-  //   );
-  // }
-
   Future<void> onMapViewReady() async {
     // final portalItem = PortalItem.withPortalAndItemId(
     //   portal: Portal.arcGISOnline(),
@@ -462,28 +367,25 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
 
     _mapViewController.interactionOptions.rotateEnabled = false;
     _offlineMapTask = OfflineMapTask.withOnlineMap(_map!);
+    // _offlineMapTask = OfflineMapTask.withPortalItem(portalItem);
 
     setState(() => _ready = true);
   }
 
-  // Calculate the Envelope of the outlined region.
-  Envelope? outlineEnvelope() {
+  Envelope? outlineEnvelopeFixedSize({double size = 200}) {
     final outlineContext = _outlineKey.currentContext;
     final mapContext = _mapKey.currentContext;
     if (outlineContext == null || mapContext == null) return null;
 
-    // Get the global screen rect of the outlined region.
     final outlineRenderBox = outlineContext.findRenderObject() as RenderBox?;
     final outlineGlobalScreenRect =
-        outlineRenderBox!.localToGlobal(Offset.zero) & outlineRenderBox.size;
+    outlineRenderBox!.localToGlobal(Offset.zero) & outlineRenderBox.size;
 
-    // Convert the global screen rect to a rect local to the map view.
     final mapRenderBox = mapContext.findRenderObject() as RenderBox?;
     final mapLocalScreenRect = outlineGlobalScreenRect.shift(
       -mapRenderBox!.localToGlobal(Offset.zero),
     );
 
-    // Convert the local screen rect to map coordinates.
     final locationTopLeft = _mapViewController.screenToLocation(
       screen: mapLocalScreenRect.topLeft,
     );
@@ -492,35 +394,48 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
     );
     if (locationTopLeft == null || locationBottomRight == null) return null;
 
-    // Create an Envelope from the map coordinates.
-    return Envelope.fromPoints(locationTopLeft, locationBottomRight);
+    // Calculate center point from current envelope
+    final centerX = (locationTopLeft.x + locationBottomRight.x) / 2;
+    final centerY = (locationTopLeft.y + locationBottomRight.y) / 2;
+
+    final halfSize = size / 2;
+
+    // Create new envelope with fixed size centered on the center point
+    return Envelope.fromXY(
+      xMin: centerX - halfSize,
+      yMin: centerY - halfSize,
+      xMax: centerX + halfSize,
+      yMax: centerY + halfSize,
+      spatialReference: locationTopLeft.spatialReference,
+    );
   }
 
+
   // Calculate the Envelope of the outlined region.
-  // Envelope? outlineEnvelope() {
-  //   final outlineContext = _outlineKey.currentContext;
-  //   final mapContext = _mapKey.currentContext;
-  //   if (outlineContext == null || mapContext == null) return null;
-  //
-  //   final outlineRenderBox = outlineContext.findRenderObject() as RenderBox?;
-  //   final outlineGlobalScreenRect =
-  //   outlineRenderBox!.localToGlobal(Offset.zero) & outlineRenderBox.size;
-  //
-  //   final mapRenderBox = mapContext.findRenderObject() as RenderBox?;
-  //   final mapLocalScreenRect = outlineGlobalScreenRect.shift(
-  //     -mapRenderBox!.localToGlobal(Offset.zero),
-  //   );
-  //
-  //   final locationTopLeft = _mapViewController.screenToLocation(
-  //     screen: mapLocalScreenRect.topLeft,
-  //   );
-  //   final locationBottomRight = _mapViewController.screenToLocation(
-  //     screen: mapLocalScreenRect.bottomRight,
-  //   );
-  //   if (locationTopLeft == null || locationBottomRight == null) return null;
-  //
-  //   return Envelope.fromPoints(locationTopLeft, locationBottomRight);
-  // }
+  Envelope? outlineEnvelope() {
+    final outlineContext = _outlineKey.currentContext;
+    final mapContext = _mapKey.currentContext;
+    if (outlineContext == null || mapContext == null) return null;
+
+    final outlineRenderBox = outlineContext.findRenderObject() as RenderBox?;
+    final outlineGlobalScreenRect =
+    outlineRenderBox!.localToGlobal(Offset.zero) & outlineRenderBox.size;
+
+    final mapRenderBox = mapContext.findRenderObject() as RenderBox?;
+    final mapLocalScreenRect = outlineGlobalScreenRect.shift(
+      -mapRenderBox!.localToGlobal(Offset.zero),
+    );
+
+    final locationTopLeft = _mapViewController.screenToLocation(
+      screen: mapLocalScreenRect.topLeft,
+    );
+    final locationBottomRight = _mapViewController.screenToLocation(
+      screen: mapLocalScreenRect.bottomRight,
+    );
+    if (locationTopLeft == null || locationBottomRight == null) return null;
+
+    return Envelope.fromPoints(locationTopLeft, locationBottomRight);
+  }
 
   double calculateMinScaleFromEnvelope(Envelope envelope) {
     // Approximate display width in pixels (adjust this to your map widget size)
@@ -542,29 +457,109 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
     return scale;
   }
 
-  // double minScale = 5e5;
+  // Utility to split envelope into grid of smaller envelopes (chunks)
+  List<Envelope> splitEnvelopeIntoChunks(Envelope envelope, int rows, int cols) {
+    double width = (envelope.xMax - envelope.xMin) / cols;
+    double height = (envelope.yMax - envelope.yMin) / rows;
+
+    List<Envelope> chunks = [];
+    for (int row = 0; row < rows; row++) {
+      for (int col = 0; col < cols; col++) {
+        double xmin = envelope.xMin + col * width;
+        double ymin = envelope.yMin + row * height;
+        double xmax = xmin + width;
+        double ymax = ymin + height;
+        chunks.add(Envelope.fromXY(xMin: xmin, yMin: ymin, xMax: xmax, yMax: ymax, spatialReference: envelope.spatialReference));
+      }
+    }
+    return chunks;
+  }
+
+  // Future<void> takeOfflineChunked() async {
+  //   final fullEnvelope = outlineEnvelopeFixedSize(size: 400); // or your full area
   //
-  // Future<void> zoomToMinScale() async {
-  //   try {
-  //     // Get current viewpoint asynchronously
-  //     final currentViewpoint = await _mapViewController.getCurrentViewpoint();
-  //
-  //     // Extract center point geometry from viewpoint
-  //     final center = currentViewpoint.targetGeometry as Point;
-  //
-  //     // Create a viewpoint with center and scale using named constructor
-  //     final viewpoint = Viewpoint.centerScale(center, minScale);
-  //
-  //     // Set viewpoint on the controller
-  //     await _mapViewController.setViewpoint(viewpoint);
-  //   } catch (e) {
-  //     debugPrint('Failed to zoom to minScale: $e');
+  //   if (fullEnvelope == null) {
+  //     await showAlertDialog(context, "Envelope couldn't be determined.");
+  //     return;
   //   }
+  //
+  //   // Split into 4x4 grid (adjust rows/cols for chunk size)
+  //   int rows = 4;
+  //   int cols = 4;
+  //   List<Envelope> chunks = splitEnvelopeIntoChunks(fullEnvelope, rows, cols);
+  //
+  //   setState(() {
+  //     _progress = 0;
+  //   });
+  //
+  //   // Directory to save all offline chunks
+  //   final documentsUri = (await getApplicationDocumentsDirectory()).uri;
+  //   final baseDownloadDirUri = documentsUri.resolve('offline_map_chunks/');
+  //   final baseDownloadDir = Directory.fromUri(baseDownloadDirUri);
+  //   if (baseDownloadDir.existsSync()) {
+  //     baseDownloadDir.deleteSync(recursive: true);
+  //   }
+  //   baseDownloadDir.createSync();
+  //
+  //   int completed = 0;
+  //
+  //   for (int i = 0; i < chunks.length; i++) {
+  //     Envelope chunkEnvelope = chunks[i];
+  //     final minScale = calculateMinScaleFromEnvelope(chunkEnvelope);
+  //     if (minScale <= 0) {
+  //       await showAlertDialog(context, "Invalid minScale calculated for chunk.");
+  //       return;
+  //     }
+  //
+  //     final parameters = await _offlineMapTask.createDefaultGenerateOfflineMapParameters(
+  //       areaOfInterest: chunkEnvelope,
+  //       minScale: minScale,
+  //     );
+  //     parameters.continueOnErrors = false;
+  //
+  //     final chunkDirUri = baseDownloadDirUri.resolve('chunk_$i/');
+  //     final chunkDir = Directory.fromUri(chunkDirUri);
+  //     if (chunkDir.existsSync()) chunkDir.deleteSync(recursive: true);
+  //     chunkDir.createSync();
+  //
+  //     _generateOfflineMapJob = _offlineMapTask.generateOfflineMap(
+  //       parameters: parameters,
+  //       downloadDirectoryUri: chunkDirUri,
+  //     );
+  //
+  //     // Listen to progress for this chunk
+  //     _generateOfflineMapJob!.onProgressChanged.listen((progress) {
+  //       // Calculate overall progress across all chunks
+  //       int overallProgress = ((completed + progress / 100) / chunks.length * 100).toInt();
+  //       setState(() {
+  //         _progress = overallProgress;
+  //       });
+  //     });
+  //
+  //     try {
+  //       final result = await _generateOfflineMapJob!.run();
+  //       _map = result.offlineMap!;
+  //       // Optionally combine or load chunk offline maps later as needed
+  //       completed++;
+  //     } on ArcGISException catch (e) {
+  //       debugPrint('Chunk $i failed: ${e.message}');
+  //       await showAlertDialog(context, 'Chunk $i failed: ${e.message}');
+  //       return;
+  //     }
+  //   }
+  //
+  //   setState(() {
+  //     _progress = null;
+  //     _offline = true;
+  //   });
+  //
+  //   await showAlertDialog(context, "All chunks downloaded successfully.");
   // }
 
   // Take the selected region offline.
   Future<void> takeOffline() async {
     final envelope = outlineEnvelope();
+    // final envelope = outlineEnvelopeFixedSize();
     if (envelope == null) {
       await showAlertDialog(context, "Envelope couldn't be determined.");
       return;
@@ -573,7 +568,7 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
       await showAlertDialog(context, "Invalid envelope coordinates.");
       return;
     }
-    const minScale = 1e4;
+    const minScale = 1e5;
     // final minScale = calculateMinScaleFromEnvelope(envelope);
     if (minScale <= 0) {
       await showAlertDialog(context, "Invalid minScale calculated.");
@@ -616,12 +611,51 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
       setState(() => _progress = progress);
     });
 
+    _generateOfflineMapJob!.onStatusChanged.listen((status) {
+      debugPrint('status value: $status');
+      if (status == JobStatus.succeeded) {
+        // handle success - get .result.offlineMap etc.
+      }
+      else if (status == JobStatus.failed) {
+        if(_generateOfflineMapJob!=null) {
+          final error = _generateOfflineMapJob?.error;
+          if (error != null) {
+            // If error is ArcGISException, print message property
+            debugPrint('Offline map job failed: ${error.message}');
+                    } else {
+            debugPrint('Offline map job failed with unknown error');
+          }
+        }
+
+
+
+        // Try to get failed region if available
+        // final failedRegion = _generateOfflineMapJob!.failedArea;
+        // if (failedRegion != null) {
+        //   debugPrint('Failed region envelope: $failedRegion');
+        //   // Use the envelope extents for diagnostics or UI
+        // }
+      }
+    });
+
     try {
     final result = await _generateOfflineMapJob!.run();
+    // final result = await _generateOfflineMapJob!.start();
+    if(!result.hasErrors) {
+      _map = result.offlineMap;
+      _mapViewController.arcGISMap = result.offlineMap;
+      _generateOfflineMapJob = null;
+    } else {
+      result.layerErrors.forEach((layer, e) {
+        // Report any error(s) for each layer ...
+        debugPrint('e.message ${e.message} ERROR: -- $e');
+      });
 
-    _map = result.offlineMap;
-    _mapViewController.arcGISMap = result.offlineMap;
-    _generateOfflineMapJob = null;
+      result.tableErrors.forEach((featureTable, e) {
+        // Report any error(s) for each table ...
+        debugPrint('e.message ${e.message} ERROR: -- $e');
+      });
+    }
     } on ArcGISException catch (e) {
     debugPrint('ArcGISException: ${e.message}, code=${e.code}, type=${e.errorType} additionalMessage=${e.additionalMessage}');
     _generateOfflineMapJob = null;
