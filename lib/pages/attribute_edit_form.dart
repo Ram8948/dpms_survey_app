@@ -3,6 +3,7 @@ import 'package:arcgis_maps/arcgis_maps.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
+import 'package:path/path.dart' as path;
 
 class AttributeEditForm extends StatefulWidget {
   final ArcGISFeature feature;
@@ -43,23 +44,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         .map((pf) => pf.fieldName.toLowerCase())
         .toSet();
 
-    // Filter feature table fields to only popup fields and exclude system fields
-    // final filteredFields = widget.featureTable.fields
-    //     .where((field) {
-    //   final fname = field.name.toLowerCase();
-    //   return popupFieldNames.contains(fname) &&
-    //       !['objectid', 'globalid', 'shape'].contains(fname);
-    // })
-    //     .toList();
-
-    // Sort filtered fields in popup configured order
-    // filteredFields.sort((a, b) {
-    //   final aIndex = popupFieldList.indexWhere((pf) => pf.fieldName.toLowerCase() == a.name.toLowerCase());
-    //   final bIndex = popupFieldList.indexWhere((pf) => pf.fieldName.toLowerCase() == b.name.toLowerCase());
-    //   return aIndex.compareTo(bIndex);
-    // });
-
-    // Filter original attributes map to keep only popup-visible fields
     _editedAttributes = Map<String, dynamic>.fromEntries(
       widget.feature.attributes.entries.where((entry) =>
           popupFieldNames.contains(entry.key.toLowerCase())),
@@ -130,17 +114,14 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
 
   @override
   Widget build(BuildContext context) {
-    // Filter popup fields by visibility if supported, default true otherwise
     final popupFields = widget.featurePopup.popupDefinition.fields.where((pf) =>
     (pf.isVisible ?? true));
-
     final popupFieldList = popupFields.toList();
 
     final popupFieldNames = popupFieldList
         .map((pf) => pf.fieldName.toLowerCase())
         .toSet();
 
-    // Filter feature table fields to only popup fields and exclude system fields
     final filteredFields = widget.featureTable.fields
         .where((field) {
       final fname = field.name.toLowerCase();
@@ -149,7 +130,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     })
         .toList();
 
-    // Sort filtered fields in popup configured order
     filteredFields.sort((a, b) {
       final aIndex = popupFieldList.indexWhere((pf) => pf.fieldName.toLowerCase() == a.name.toLowerCase());
       final bIndex = popupFieldList.indexWhere((pf) => pf.fieldName.toLowerCase() == b.name.toLowerCase());
@@ -181,7 +161,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                 const SizedBox(height: 6),
                 ...filteredFields.map((field) => _buildFieldCard(field, popupFieldList)).toList(),
                 const SizedBox(height: 18),
-                // Attachments section unchanged
                 Card(
                   margin: const EdgeInsets.symmetric(vertical: 5),
                   child: Padding(
@@ -273,7 +252,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     );
   }
 
-  // Builds form field with popup field's label if available
   Widget _buildFieldCard(Field field, List<PopupField> popupFields) {
     final isEditable = field.editable;
     final value = _editedAttributes[field.name];
@@ -281,7 +259,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     final shouldBeEditable = isEditable || isValueBlank;
     final readOnlyColor = Colors.grey[200];
 
-    // Find popup field for alias/label
     PopupField? findPopupField(String fieldName, List<PopupField> popupFields) {
       for (final pf in popupFields) {
         if (pf.fieldName.toLowerCase() == fieldName.toLowerCase()) {
@@ -291,11 +268,8 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       return null;
     }
 
-// Usage
     final popupField = findPopupField(field.name, popupFields);
     final label = popupField?.label ?? field.alias;
-
-
 
     String formatDate(dynamic val) {
       if (val == null) return '';
@@ -308,28 +282,74 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       return (date != null) ? DateFormat('yyyy-MM-dd').format(date) : '';
     }
 
+    // Dropdown for coded value domain
+    if (field.domain is CodedValueDomain && shouldBeEditable) {
+      final domain = field.domain as CodedValueDomain;
+      final codedValues = domain.codedValues;
+      final selectedValue = _editedAttributes[field.name]?.toString();
+
+      return Card(
+        margin: const EdgeInsets.symmetric(vertical: 5),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: DropdownButtonFormField<String>(
+            value: selectedValue,
+            decoration: InputDecoration(
+              labelText: label,
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
+            items: codedValues.map((cv) {
+              return DropdownMenuItem<String>(
+                value: cv.code.toString(),
+                child: Text(cv.name),
+              );
+            }).toList(),
+            onChanged: shouldBeEditable
+                ? (String? newValue) {
+              setState(() {
+                _editedAttributes[field.name] = newValue;
+              });
+            }
+                : null,
+            validator: (val) {
+              if (!field.nullable && (val == null || val.isEmpty)) {
+                return '$label is required';
+              }
+              return null;
+            },
+          ),
+        ),
+      );
+    }
+
     if (field.type == FieldType.date && shouldBeEditable) {
+      final DateTime defaultDate = DateTime.now();
+      DateTime initialDate = defaultDate;
+
+      if (value != null && value.toString().isNotEmpty) {
+        DateTime? parsedDate;
+        if (value is DateTime) {
+          parsedDate = value;
+        } else if (value is String) {
+          parsedDate = DateTime.tryParse(value);
+        }
+        if (parsedDate != null) {
+          initialDate = parsedDate;
+        }
+      } else {
+        // Set default current date for new feature
+        _editedAttributes[field.name] = defaultDate.toIso8601String();
+      }
+
       return Card(
         margin: const EdgeInsets.symmetric(vertical: 5),
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: GestureDetector(
             onTap: () async {
-              DateTime initialDate = DateTime.now();
               DateTime firstDate = DateTime(1900);
               DateTime lastDate = DateTime(2100);
-
-              if (value != null) {
-                DateTime? parsedDate;
-                if (value is DateTime) {
-                  parsedDate = value;
-                } else if (value is String) {
-                  parsedDate = DateTime.tryParse(value);
-                }
-                if (parsedDate != null) {
-                  initialDate = parsedDate;
-                }
-              }
 
               final picked = await showDatePicker(
                 context: context,
@@ -346,7 +366,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
             },
             child: AbsorbPointer(
               child: TextFormField(
-                controller: TextEditingController(text: formatDate(value)),
+                controller: TextEditingController(text: formatDate(_editedAttributes[field.name])),
                 decoration: InputDecoration(
                   labelText: label,
                   border: const OutlineInputBorder(),
@@ -367,6 +387,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       );
     }
 
+    // Default text input field
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 5),
       color: shouldBeEditable ? null : readOnlyColor,
@@ -418,7 +439,14 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   Future<void> _saveAttributes() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     _formKey.currentState?.save();
-    debugPrint('_saveAttributes');
+    debugPrint("_saveAttributes1 _attachments.isEmpty ${_attachments.isEmpty} _newAttachments.isEmpty ${_newAttachments.isEmpty}");
+    if (_attachments.isEmpty && _newAttachments.isEmpty) {
+      ScaffoldMessenger.of(widget.parentScaffoldContext).showSnackBar(
+        const SnackBar(content: Text('Please add at least one attachment')),
+      );
+      debugPrint("_saveAttributes Please add at least one attachment");
+      return;
+    }
     List<String> conversionErrors = [];
 
     for (var entry in _editedAttributes.entries) {
@@ -434,7 +462,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
           case FieldType.int32:
           case FieldType.int64:
             typedValue = int.tryParse(value.toString());
-            debugPrint('_saveAttributes integer');
             if (typedValue == null && value.toString().isNotEmpty) {
               throw FormatException('Invalid integer');
             }
@@ -442,14 +469,12 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
           case FieldType.float32:
           case FieldType.float64:
             typedValue = double.tryParse(value.toString());
-            debugPrint('_saveAttributes double');
             if (typedValue == null && value.toString().isNotEmpty) {
               throw FormatException('Invalid double');
             }
             break;
           case FieldType.text:
             typedValue = value.toString();
-            debugPrint('_saveAttributes text');
             break;
           case FieldType.date:
             if (value is String) {
@@ -457,23 +482,19 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
             } else if (value is DateTime) {
               typedValue = value;
             }
-            debugPrint('_saveAttributes date');
             break;
           default:
             typedValue = value;
         }
-        if (typedValue != null && typedValue!="null") {
-          debugPrint('_saveAttributes typedValue $typedValue');
+        if (typedValue != null && typedValue != "null") {
           widget.feature.attributes[key] = typedValue;
         }
       } catch (e) {
-        debugPrint('_saveAttributes conversionErrors $e');
         conversionErrors.add('${field.alias} (${field.name})');
       }
     }
 
     if (conversionErrors.isNotEmpty) {
-      debugPrint('_saveAttributes conversionErrors');
       final errorFields = conversionErrors.join(', ');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -492,6 +513,22 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       if (widget.featureTable is ServiceFeatureTable) {
         await (widget.featureTable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
       }
+      // Add attachments sequentially
+      for (final file in _newAttachments) {
+        final ext = path.extension(file.path).toLowerCase(); // Using path package
+        final bytes = await file.readAsBytes();
+        final name = file.path.split('/').last;
+        print('File extension: $ext');
+        bool attachmentsEnabled = widget.featureTable.hasAttachments ?? false;
+        debugPrint("attachmentsEnabled $attachmentsEnabled");
+        await widget.feature.addAttachment(
+          name: name,
+          contentType: _mimeTypeForExtension(ext), // optionally map to mime type
+          data: bytes,
+        );
+      }
+      bool attachmentsEnabled = widget.featureTable.hasAttachments ?? false;
+      debugPrint("attachmentsEnabled $attachmentsEnabled");
       widget.onFormSaved();
     } catch (e) {
       if (mounted) {
@@ -499,6 +536,20 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
           SnackBar(content: Text('Update failed: $e')),
         );
       }
+    }
+  }
+
+  String _mimeTypeForExtension(String ext) {
+    switch (ext) {
+      case '.jpg':
+      case '.jpeg':
+        return 'image/jpeg';
+      case '.png':
+        return 'image/png';
+      case '.pdf':
+        return 'application/pdf';
+      default:
+        return 'application/octet-stream';
     }
   }
 }

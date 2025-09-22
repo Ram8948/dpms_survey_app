@@ -1,5 +1,6 @@
 import 'package:dpmssurveyapp/pages/login_and_home_manager.dart';
 import 'package:dpmssurveyapp/pages/authenticate_with_o_auth_offline.dart';
+import 'package:dpmssurveyapp/pages/authenticate_and_export_offline.dart';
 import 'package:flutter/material.dart';
 import 'package:arcgis_maps/arcgis_maps.dart';
 
@@ -16,8 +17,9 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
-  // Widget build(BuildContext context) => const MaterialApp(home: LoginAndHomeManager());
-  Widget build(BuildContext context) => MaterialApp(home: AuthenticateWithOAuthOffline());
+  Widget build(BuildContext context) => const MaterialApp(home: LoginAndHomeManager());
+  // Widget build(BuildContext context) => MaterialApp(home: AuthenticateWithOAuthOffline());
+  // Widget build(BuildContext context) => MaterialApp(home: AuthenticateAndExportOffline());
 }
 
 // Entry widget: determine initial screen

@@ -11,7 +11,7 @@ class AuthenticateWithOAuthOffline extends StatefulWidget {
   State<AuthenticateWithOAuthOffline> createState() => _AuthenticateWithOAuthOfflineState();
 }
 
-class _AuthenticateWithOAuthOfflineState extends State<AuthenticateWithOAuthOffline> {
+class _AuthenticateWithOAuthOfflineState extends State<AuthenticateWithOAuthOffline> implements ArcGISAuthenticationChallengeHandler {
   final _mapViewController = ArcGISMapView.createController();
 
   final _oauthUserConfiguration = OAuthUserConfiguration(
@@ -33,91 +33,145 @@ class _AuthenticateWithOAuthOfflineState extends State<AuthenticateWithOAuthOffl
   final _outlineKey = GlobalKey();
 
   @override
+  void initState() {
+    super.initState();
+
+    // Set this class to the arcGISAuthenticationChallengeHandler property on the authentication manager.
+    // This class implements the ArcGISAuthenticationChallengeHandler interface,
+    // which allows it to handle authentication challenges via calls to its
+    // handleArcGISAuthenticationChallenge() method.
+    ArcGISEnvironment
+        .authenticationManager
+        .arcGISAuthenticationChallengeHandler = this;
+  }
+
+  @override
   void dispose() {
-    Authenticator.revokeOAuthTokens().catchError((error) {
+    // We do not want to handle authentication challenges outside of this sample,
+    // so we remove this as the challenge handler.
+    ArcGISEnvironment
+        .authenticationManager
+        .arcGISAuthenticationChallengeHandler = null;
+
+    // Revoke OAuth tokens and remove all credentials to log out.
+    Future.wait(
+      ArcGISEnvironment.authenticationManager.arcGISCredentialStore
+          .getCredentials()
+          .whereType<OAuthUserCredential>()
+          .map((credential) => credential.revokeToken()),
+    )
+        .catchError((error) {
+      // This sample has been disposed, so we can only report errors to the console.
+      // ignore: avoid_print
       print('Error revoking tokens: $error');
-    }).whenComplete(Authenticator.clearCredentials);
+      return [];
+    })
+        .whenComplete(() {
+      ArcGISEnvironment.authenticationManager.arcGISCredentialStore
+          .removeAll();
+    });
+
     super.dispose();
+  }
+
+  @override
+  Future<void> handleArcGISAuthenticationChallenge(
+      ArcGISAuthenticationChallenge challenge,
+      ) async {
+    try {
+      // Initiate the sign in process to the OAuth server using the defined user configuration.
+      final credential = await OAuthUserCredential.create(
+        configuration: _oauthUserConfiguration,
+      );
+
+      // Sign in was successful, so continue with the provided credential.
+      challenge.continueWithCredential(credential);
+    } on ArcGISException catch (error) {
+      // Sign in was canceled, or there was some other error.
+      final e = (error.wrappedException as ArcGISException?) ?? error;
+      if (e.errorType == ArcGISExceptionType.commonUserCanceled) {
+        challenge.cancel();
+      } else {
+        challenge.continueAndFail();
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Authenticator(
-        oAuthUserConfigurations: [_oauthUserConfiguration],
-        child: SafeArea(
-          top: false, left: false, right: false,
-          child: Stack(
-            children: [
-              Column(
-                children: [
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        ArcGISMapView(
-                          key: _mapKey,
-                          controllerProvider: () => _mapViewController,
-                          onMapViewReady: onMapViewReady,
-                        ),
-                        Visibility(
-                          visible: _progress == null && !_offline,
-                          child: IgnorePointer(
-                            child: SafeArea(
+      body: SafeArea(
+        top: false, left: false, right: false,
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                Expanded(
+                  child: Stack(
+                    children: [
+                      ArcGISMapView(
+                        key: _mapKey,
+                        controllerProvider: () => _mapViewController,
+                        onMapViewReady: onMapViewReady,
+                      ),
+                      Visibility(
+                        visible: _progress == null && !_offline,
+                        child: IgnorePointer(
+                          child: SafeArea(
+                            child: Container(
+                              margin: const EdgeInsets.fromLTRB(30, 30, 30, 50),
                               child: Container(
-                                margin: const EdgeInsets.fromLTRB(30, 30, 30, 50),
-                                child: Container(
-                                  key: _outlineKey,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: Colors.red,
-                                      width: 2,
-                                    ),
+                                key: _outlineKey,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.red,
+                                    width: 2,
                                   ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: _progress != null || _offline ? null : takeOffline,
-                      child: const Text('Take Map Offline'),
-                    ),
+                ),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: _progress != null || _offline ? null : takeOffline,
+                    child: const Text('Take Map Offline'),
                   ),
-                ],
-              ),
-              // Display job progress indicator
-              Visibility(
-                visible: _progress != null,
-                child: Center(
-                  child: Container(
-                    width: MediaQuery.of(context).size.width / 2,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('${_progress ?? 0}%'),
-                        LinearProgressIndicator(
-                          value: _progress != null ? _progress! / 100.0 : 0.0,
-                        ),
-                        ElevatedButton(
-                          onPressed: () => _generateOfflineMapJob?.cancel(),
-                          child: const Text('Cancel'),
-                        ),
-                      ],
-                    ),
+                ),
+              ],
+            ),
+            // Display job progress indicator
+            Visibility(
+              visible: _progress != null,
+              child: Center(
+                child: Container(
+                  width: MediaQuery.of(context).size.width / 2,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('${_progress ?? 0}%'),
+                      LinearProgressIndicator(
+                        value: _progress != null ? _progress! / 100.0 : 0.0,
+                      ),
+                      ElevatedButton(
+                        onPressed: () => _generateOfflineMapJob?.cancel(),
+                        child: const Text('Cancel'),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -137,7 +191,7 @@ class _AuthenticateWithOAuthOfflineState extends State<AuthenticateWithOAuthOffl
     await portal.load();
     final portalItem = PortalItem.withPortalAndItemId(
       portal: portal,
-      itemId: "f6d825906df147e7b850d47a77b6b25b",
+      itemId: "e8e7e57251f04268a74bef95768071da",
     );
     await portalItem.load();
 
@@ -214,6 +268,7 @@ class _AuthenticateWithOAuthOfflineState extends State<AuthenticateWithOAuthOffl
     } on ArcGISException catch (e) {
       _generateOfflineMapJob = null;
       setState(() => _progress = null);
+      debugPrint('ArcGISException: ${e.message}, code=${e.code}, type=${e.errorType} additionalMessage=${e.additionalMessage}');
       if (e.errorType != ArcGISExceptionType.commonUserCanceled && mounted) {
         await showAlertDialog(context, e.message);
       }
