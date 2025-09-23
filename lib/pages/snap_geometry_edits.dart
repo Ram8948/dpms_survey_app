@@ -292,21 +292,22 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
         _selectedGraphic!.isVisible = true;
         // Reset the selected graphic to null.
         _selectedGraphic = null;
-      } else {
-        // // If there was no existing graphic, create a new one and add to the graphics overlay.
-        // final graphic = Graphic(geometry: geometry);
-        // // Apply a symbol to the graphic from the geometry editor style depending on the geometry type.
-        // final geometryType = geometry.geometryType;
-        // if (geometryType == GeometryType.point ||
-        //     geometryType == GeometryType.multipoint) {
-        //   graphic.symbol = _geometryEditorStyle.vertexSymbol;
-        // } else if (geometryType == GeometryType.polyline) {
-        //   graphic.symbol = _geometryEditorStyle.lineSymbol;
-        // } else if (geometryType == GeometryType.polygon) {
-        //   graphic.symbol = _geometryEditorStyle.fillSymbol;
-        // }
-        // _graphicsOverlay.graphics.add(graphic);
       }
+      // else {
+      //   // If there was no existing graphic, create a new one and add to the graphics overlay.
+      //   final graphic = Graphic(geometry: geometry);
+      //   // Apply a symbol to the graphic from the geometry editor style depending on the geometry type.
+      //   final geometryType = geometry.geometryType;
+      //   if (geometryType == GeometryType.point ||
+      //       geometryType == GeometryType.multipoint) {
+      //     graphic.symbol = _geometryEditorStyle.vertexSymbol;
+      //   } else if (geometryType == GeometryType.polyline) {
+      //     graphic.symbol = _geometryEditorStyle.lineSymbol;
+      //   } else if (geometryType == GeometryType.polygon) {
+      //     graphic.symbol = _geometryEditorStyle.fillSymbol;
+      //   }
+      //   _graphicsOverlay.graphics.add(graphic);
+      // }
       createFeature(geometry);
     }
 
@@ -338,11 +339,11 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
         // Add the feature to the local table.
         await _selectedtable!.addFeature(feature!);
 
-        // Apply the edits to the service on the service geodatabase.
-        if(_selectedtable is ServiceFeatureTable)
-        {
-          await (_selectedtable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
-        }
+        // // Apply the edits to the service on the service geodatabase.
+        // if(_selectedtable is ServiceFeatureTable)
+        // {
+        //   await (_selectedtable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
+        // }
         // else if(_selectedtable is GeodatabaseFeatureTable)
         // {
         //   await (_selectedtable as GeodatabaseFeatureTable).geodatabase!.applyEdits();

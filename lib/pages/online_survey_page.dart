@@ -45,6 +45,12 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage> with SampleStateSup
       portal: portal,
       itemId: widget.webMapItemId,
     );
+
+    // final portalItem = PortalItem.withPortalAndItemId(
+    //   portal: Portal.arcGISOnline(),
+    //   itemId: widget.webMapItemId,
+    // );
+
     await portalItem.load();
 
     _map = ArcGISMap.withItem(portalItem);

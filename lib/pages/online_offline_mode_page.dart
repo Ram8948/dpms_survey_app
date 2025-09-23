@@ -15,11 +15,12 @@ class _OnlineOfflineModePageState extends State<OnlineOfflineModePage> {
   // final Uri _portalUri = Uri.parse('https://www.arcgis.com/');
   // final String _webMapItemId = 'acc027394bc84c2fb04d1ed317aac674';
   final Uri _portalUri = Uri.parse('https://gis.mjpdpms.in/agportal/');
+  final String _webMapItemId = '920addf59d734bdca9146ae20315fb5b';
   // final String _webMapItemId = 'e8e7e57251f04268a74bef95768071da';
   // final String _webMapItemId = 'f6d825906df147e7b850d47a77b6b25b';
   // final String _webMapItemId = 'bc8cf0f385e647e7be6fed33c88a3167';
   // final String _webMapItemId = '3f8a0c86cffc4b1c9ad5e1dfee5179b2';
-  final String _webMapItemId = '920addf59d734bdca9146ae20315fb5b';
+
 
   @override
   Widget build(BuildContext context) {

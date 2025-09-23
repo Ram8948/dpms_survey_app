@@ -48,6 +48,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       widget.feature.attributes.entries.where((entry) =>
           popupFieldNames.contains(entry.key.toLowerCase())),
     );
+    // getRelatedFeatures(widget.feature);
     _loadAttachments();
   }
 
@@ -508,17 +509,17 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     }
 
     try {
-      await widget.feature.load();
-      await widget.featureTable.updateFeature(widget.feature);
-      if (widget.featureTable is ServiceFeatureTable) {
-        await (widget.featureTable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
-      }
+      // await widget.feature.load();
+      // await widget.featureTable.updateFeature(widget.feature);
+      // if (widget.featureTable is ServiceFeatureTable) {
+      //   await (widget.featureTable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
+      // }
       // Add attachments sequentially
       for (final file in _newAttachments) {
         final ext = path.extension(file.path).toLowerCase(); // Using path package
         final bytes = await file.readAsBytes();
         final name = file.path.split('/').last;
-        print('File extension: $ext');
+        debugPrint('File extension: $ext');
         bool attachmentsEnabled = widget.featureTable.hasAttachments ?? false;
         debugPrint("attachmentsEnabled $attachmentsEnabled");
         await widget.feature.addAttachment(
@@ -528,7 +529,12 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         );
       }
       bool attachmentsEnabled = widget.featureTable.hasAttachments ?? false;
-      debugPrint("attachmentsEnabled $attachmentsEnabled");
+      debugPrint("1attachmentsEnabled $attachmentsEnabled");
+      // if (widget.featureTable is ServiceFeatureTable) {
+      //   await (widget.featureTable as ServiceFeatureTable).applyEdits();
+      //   debugPrint("attachmentsEnabled $attachmentsEnabled");
+      // }
+      _applyEdits(widget.feature);
       widget.onFormSaved();
     } catch (e) {
       if (mounted) {
@@ -537,6 +543,20 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         );
       }
     }
+  }
+
+  Future<void> _applyEdits(ArcGISFeature selectedFeature) async {
+    final serviceFeatureTable =
+    widget.featureTable as ServiceFeatureTable;
+    try {
+      // Update the selected feature locally.
+      await serviceFeatureTable.updateFeature(selectedFeature);
+      // Apply the edits to the service.
+      await serviceFeatureTable.serviceGeodatabase!.applyEdits();
+    } on ArcGISException catch (e) {
+      debugPrint("ArcGISException $e");
+    }
+    return Future.value();
   }
 
   String _mimeTypeForExtension(String ext) {
@@ -552,4 +572,29 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         return 'application/octet-stream';
     }
   }
+
+  // Future<List<Feature>> getRelatedFeatures(ArcGISFeature feature) async {
+  //   final ServiceFeatureTable serviceFeatureTable = feature.featureTable as ServiceFeatureTable;
+  //
+  //   final List<RelatedFeatureQueryResult> relatedResults =
+  //   await serviceFeatureTable.queryRelatedFeatures(feature: feature);
+  //
+  //   List<Feature> allRelatedFeatures = [];
+  //
+  //   for (final result in relatedResults) {
+  //     // result.features() returns Iterable<ArcGISFeature>
+  //     final Iterable<Feature> features = result.features();
+  //
+  //     for (final relatedFeature in features) {
+  //       debugPrint("relatedFeature.attributes ${relatedFeature.attributes}");
+  //       debugPrint("relatedFeature.featureTable?.fields ${relatedFeature.featureTable?.fields}");
+  //       debugPrint("relatedFeature.featureTable?.popupDefinition?.fields ${relatedFeature.featureTable?.popupDefinition?.fields}");
+  //       allRelatedFeatures.add(relatedFeature);
+  //     }
+  //   }
+  //   return allRelatedFeatures;
+  // }
+
+
+
 }
