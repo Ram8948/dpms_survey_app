@@ -1,8 +1,10 @@
 import 'package:arcgis_maps/arcgis_maps.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import '../common/bottom_sheet_settings.dart';
 import '../common/sample_state_support.dart';
+
 class SnapGeometryEdits extends StatefulWidget {
   final Uri portalUri;
   final String webMapItemId;
@@ -19,38 +21,25 @@ class SnapGeometryEdits extends StatefulWidget {
 }
 
 class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateSupport {
-  // Create a controller for the map view.
   final _mapViewController = ArcGISMapView.createController();
-  // Create a graphics overlay.
   final _graphicsOverlay = GraphicsOverlay();
-  // Create a geometry editor.
   final _geometryEditor = GeometryEditor();
-  // Create a geometry editor style for accessing symbol styles.
   final _geometryEditorStyle = GeometryEditorStyle();
-  // A flag for when the map view is ready and controls can be used.
+
   var _ready = false;
-
-  // Create a list of menu items for each geometry type.
-  // final _geometryTypeMenuItems = <DropdownMenuItem<GeometryType>>[];
   final List<DropdownMenuItem<FeatureLayer>> _layerMenuItems = [];
-
-  // Create a selection of tools to make available to the geometry editor.
   final _vertexTool = VertexTool();
   final _reticleVertexTool = ReticleVertexTool();
   final _toolMenuItems = <DropdownMenuItem<GeometryEditorTool>>[];
-
-  // Create lists to hold different types of snap source settings to make available to the geometry editor.
   final _pointLayerSnapSources = <SnapSourceSettings>[];
   final _polylineLayerSnapSources = <SnapSourceSettings>[];
   final _graphicsOverlaySnapSources = <SnapSourceSettings>[];
 
-  // Create variables for holding state relating to the geometry editor for controlling the UI.
   FeatureLayer? _selectedLayer;
   ArcGISFeatureTable? _selectedtable;
   GeometryType? _selectedGeometryType;
   GeometryEditorTool? _selectedTool;
   Graphic? _selectedGraphic;
-  // Initial values are based on defaults.
   var _geometryEditorCanUndo = false;
   var _geometryEditorIsStarted = false;
   var _geometryEditorHasSelectedElement = false;
@@ -58,48 +47,56 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
   var _geometryGuidesEnabled = false;
   var _featureSnappingEnabled = true;
 
-  // A flag for controlling the visibility of the editing toolbar.
   var _showEditToolbar = true;
-  // A flag for controlling the visibility of the snap settings.
   var _snapSettingsVisible = false;
   late ArcGISMap _map;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        top: false,
-        left: false,
-        right: false,
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                Expanded(
-                  // Add a map view to the widget tree and set a controller.
-                  child: ArcGISMapView(
-                    controllerProvider: () => _mapViewController,
-                    onMapViewReady: onMapViewReady,
-                    // Only select existing graphics to edit if the geometry editor is not started
-                    // i.e. editing is not already in progress.
-                    onTap: !_geometryEditorIsStarted ? onTap : null,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Add New Feature'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blue.shade400, Colors.blue.shade700],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  Expanded(
+                    child: ArcGISMapView(
+                      controllerProvider: () => _mapViewController,
+                      onMapViewReady: onMapViewReady,
+                      onTap: !_geometryEditorIsStarted ? onTap : null,
+                    ),
                   ),
+                  buildBottomMenu(),
+                ],
+              ),
+              if (_showEditToolbar)
+                Positioned(
+                  bottom: 120,
+                  right: 5,
+                  child: buildEditingToolbar(),
                 ),
-                // Build the bottom menu.
-                buildBottomMenu(),
-              ],
-            ),
-            Visibility(
-              visible: _showEditToolbar,
-              // Build the editing toolbar.
-              child: buildEditingToolbar(),
-            ),
-            // Display a progress indicator and prevent interaction until state is ready.
-            // LoadingIndicator(visible: !_ready),
-          ],
+              if (_snapSettingsVisible) buildSnapSettings(context),
+            ],
+          ),
         ),
       ),
-      // The snap settings bottom sheet.
-      bottomSheet: _snapSettingsVisible ? buildSnapSettings(context) : null,
     );
   }
 
@@ -219,7 +216,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
 
     // Set the ready state variable to true to enable the sample UI.
     setState(() => _ready = true);
-    }
+  }
 
   Future<void> onTap(Offset localPosition) async {
     // Perform an identify operation on the graphics overlay at the tapped location.
@@ -803,7 +800,6 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
     ];
   }
 }
-
 extension on String {
   // An extension on String to capitalize the first character of the String.
   String capitalize() {

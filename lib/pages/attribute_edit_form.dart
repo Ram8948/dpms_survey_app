@@ -18,8 +18,8 @@ class AttributeEditForm extends StatefulWidget {
     required this.featurePopup,
     required this.onFormSaved,
     required this.parentScaffoldContext,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   _AttributeEditFormState createState() => _AttributeEditFormState();
@@ -31,7 +31,9 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   List<Attachment> _attachments = [];
   List<File> _newAttachments = [];
   bool _attachmentsLoading = true;
-
+  List<Feature> _relatedFeatures = [];
+  bool _relatedFeaturesLoading = false;
+  ServiceFeatureTable? _mainFeatureTable;
   @override
   void initState() {
     super.initState();
@@ -48,7 +50,9 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       widget.feature.attributes.entries.where((entry) =>
           popupFieldNames.contains(entry.key.toLowerCase())),
     );
-    // getRelatedFeatures(widget.feature);
+    if(widget.feature.featureTable is ServiceFeatureTable) {
+      _mainFeatureTable = widget.feature.featureTable as ServiceFeatureTable;
+    }
     _loadAttachments();
   }
 
@@ -59,6 +63,14 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         _attachments = attachments;
         _attachmentsLoading = false;
       });
+      for (final attachment in _attachments) {
+        final String url = attachment.name; // remote URL to download or view
+        final String contentType = attachment.contentType; // remote URL to download or view
+        final int id = attachment.id; // remote URL to download or view
+        print('Attachment URL: $url');
+        print('Attachment contentType: $contentType');
+        print('Attachment id: $id');
+      }
     } catch (e) {
       setState(() => _attachmentsLoading = false);
       if (mounted) {
@@ -239,6 +251,11 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                 ),
                 const SizedBox(height: 18),
                 ElevatedButton.icon(
+                  icon: const Icon(Icons.table_chart),
+                  label: const Text('Show Related Features'),
+                  onPressed: _showRelatedFeaturesDialog,
+                ),
+                ElevatedButton.icon(
                   icon: const Icon(Icons.save),
                   onPressed: _saveAttributes,
                   label: const Text('Save Changes'),
@@ -251,6 +268,57 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         ),
       ),
     );
+  }
+
+  Future<void> _showRelatedFeaturesDialog() async {
+    setState(() {
+      _relatedFeaturesLoading = true;
+    });
+    try {
+      final relatedFeatures = await getRelatedFeatures(widget.feature);
+      setState(() {
+        _relatedFeatures = relatedFeatures;
+        _relatedFeaturesLoading = false;
+      });
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Related Features'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400, // fixed height for scrolling table
+            child: _relatedFeaturesLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RelatedFeaturesTable(
+              relatedFeatures: _relatedFeatures,
+              relatedFeatureTable: relatedTables!.first,
+              refreshParent: () async {
+                // Refresh list after CRUD
+                final freshRelated = await getRelatedFeatures(widget.feature);
+                setState(() {
+                  _relatedFeatures = freshRelated;
+                });
+              },
+              feature: widget.feature,
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Close'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _relatedFeaturesLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load related features: $e')),
+      );
+    }
   }
 
   Widget _buildFieldCard(Field field, List<PopupField> popupFields) {
@@ -572,29 +640,341 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         return 'application/octet-stream';
     }
   }
+  List<ArcGISFeatureTable>? relatedTables;
+  Future<List<Feature>> getRelatedFeatures(ArcGISFeature feature) async {
+    if (_mainFeatureTable == null) return [];
+    final relatedResults = await _mainFeatureTable!.queryRelatedFeatures(feature: feature);
 
-  // Future<List<Feature>> getRelatedFeatures(ArcGISFeature feature) async {
-  //   final ServiceFeatureTable serviceFeatureTable = feature.featureTable as ServiceFeatureTable;
-  //
-  //   final List<RelatedFeatureQueryResult> relatedResults =
-  //   await serviceFeatureTable.queryRelatedFeatures(feature: feature);
-  //
-  //   List<Feature> allRelatedFeatures = [];
-  //
-  //   for (final result in relatedResults) {
-  //     // result.features() returns Iterable<ArcGISFeature>
-  //     final Iterable<Feature> features = result.features();
-  //
-  //     for (final relatedFeature in features) {
-  //       debugPrint("relatedFeature.attributes ${relatedFeature.attributes}");
-  //       debugPrint("relatedFeature.featureTable?.fields ${relatedFeature.featureTable?.fields}");
-  //       debugPrint("relatedFeature.featureTable?.popupDefinition?.fields ${relatedFeature.featureTable?.popupDefinition?.fields}");
-  //       allRelatedFeatures.add(relatedFeature);
-  //     }
-  //   }
-  //   return allRelatedFeatures;
-  // }
+    relatedTables = _mainFeatureTable?.getRelatedTables();
+    debugPrint("relatedTables; ${relatedTables?.length}");
+    // for (final relatedTable in relatedTables!) {
+    //   print('Related table name: ${relatedTable.tableName}');
+    //   print('Related display name: ${relatedTable.displayName}');
+    //   print('Related display name: ${relatedTable.getRelatedTables()}');
+    //   for (final innerRelatedTable in relatedTable.getRelatedTables())
+    //   {
+    //     print('Related display name: ${innerRelatedTable.tableName}');
+    //   }
+    //   // You can create a ServiceFeatureTable for the related table by constructing its URL or using the map service's layer info
+    // }
+
+    List<Feature> allRelatedFeatures = [];
+
+    for (final result in relatedResults) {
+      debugPrint("result.features(); ${result.features()}");
+      allRelatedFeatures.addAll(result.features());
+    }
+    return allRelatedFeatures;
+  }
 
 
 
+
+}
+
+// class RelatedFeaturesTable extends StatefulWidget {
+class RelatedFeaturesTable extends StatefulWidget {
+  final List<Feature> relatedFeatures;
+  final ArcGISFeatureTable relatedFeatureTable;
+  final VoidCallback refreshParent;
+  final ArcGISFeature feature;
+
+  const RelatedFeaturesTable({
+    required this.relatedFeatures,
+    required this.relatedFeatureTable,
+    required this.refreshParent,
+    required this.feature,
+    super.key,
+  });
+
+  @override
+  _RelatedFeaturesTableState createState() => _RelatedFeaturesTableState();
+}
+
+class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
+  late List<Feature> features;
+  final _formKey = GlobalKey<FormState>();
+  final Map<String, dynamic> _newFeatureAttributes = {};
+  // late ServiceFeatureTable _relatedFeatureTable;
+  @override
+  void initState() {
+    super.initState();
+    features = List.from(widget.relatedFeatures);
+    debugPrint("features ${features.length}");
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (features.isEmpty) {
+      return Column(
+        children: [
+          const Text('No related features found.'),
+          ElevatedButton(
+            onPressed: _showCreateFeatureDialog,
+            child: const Text('Add Related Feature'),
+          )
+        ],
+      );
+    }
+
+    final fields = widget.relatedFeatureTable.fields;
+
+    return Column(
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columns: [
+              ...fields.map((field) => DataColumn(label: Text(field.alias ?? field.name))),
+              const DataColumn(label: Text('Actions')),
+            ],
+            rows: features.map((feature) {
+              return DataRow(cells: [
+                ...fields.map((field) {
+                  final value = feature.attributes[field.name];
+                  return DataCell(
+                    Text(value?.toString() ?? ''),
+                    showEditIcon: true,
+                    onTap: () async {
+                      final newValue = await showDialog<String>(
+                        context: context,
+                        builder: (context) {
+                          String editedValue = value?.toString() ?? '';
+                          return AlertDialog(
+                            title: Text('Edit ${field.alias ?? field.name}'),
+                            content: TextFormField(
+                              initialValue: editedValue,
+                              onChanged: (val) => editedValue = val,
+                            ),
+                            actions: [
+                              TextButton(
+                                child: const Text('Cancel'),
+                                onPressed: () => Navigator.of(context).pop(),
+                              ),
+                              ElevatedButton(
+                                child: const Text('Save'),
+                                onPressed: () => Navigator.of(context).pop(editedValue),
+                              )
+                            ],
+                          );
+                        },
+                      );
+                      if (newValue != null && newValue != value?.toString()) {
+                        debugPrint("field.name ${field.name}");
+                        setState(() {
+                          feature.attributes[field.name] = newValue;
+                        });
+                        await _updateFeature(feature);
+                      }
+                    },
+                  );
+                }).toList(),
+                DataCell(
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _deleteFeature(feature),
+                  ),
+                ),
+              ]);
+            }).toList(),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: _showCreateFeatureDialog,
+          child: const Text('Add Related Feature'),
+        ),
+      ],
+    );
+  }
+  Future<void> _deleteFeature(Feature feature) async {
+    try {
+      await widget.relatedFeatureTable.deleteFeature(feature);
+      await (widget.relatedFeatureTable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
+      setState(() {
+        features.remove(feature);
+      });
+      widget.refreshParent();
+    } catch (e) {
+      debugPrint("_deleteFeature $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Delete failed: $e')),
+      );
+    }
+  }
+
+  Future<void> _updateFeature(Feature feature) async {
+    try {
+      await widget.relatedFeatureTable.updateFeature(feature);
+      await (widget.relatedFeatureTable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
+      widget.refreshParent();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Update failed: $e')),
+      );
+    }
+  }
+
+  Future<void> _createFeature() async {
+    // if (!_formKey.currentState!.validate()) return;
+    // _formKey.currentState!.save();
+
+    try {
+      // debugPrint("widget.feature.attributes ${widget.feature.attributes}",wrapWidth: 5000);
+      debugPrint("_relatedFeatureTable ${widget.relatedFeatureTable.tableName}");
+      // String guidStr = widget.feature.attributes['globalid'].toString().toUpperCase();
+      // if (!guidStr.startsWith("{")) guidStr = "{$guidStr}";
+      Map<String, dynamic> newAttributes = {
+        'GUID': widget.feature.attributes['globalid'], // link to parent
+        'intpprogress': 36, // example physical progress code
+        // other necessary attributes
+      };
+      debugPrint("newAttributes $newAttributes");
+      debugPrint("_newFeatureAttributes $_newFeatureAttributes");
+      // final newFeature = widget.relatedFeatureTable.createFeature(attributes: _newFeatureAttributes);
+      final newFeature = widget.relatedFeatureTable.createFeature(attributes: newAttributes);
+      print("applyEdits applyEdits1 newFeature ${newFeature.attributes}");
+      await widget.relatedFeatureTable.addFeature(newFeature);
+      debugPrint("applyEdits applyEdits2");
+      await (widget.relatedFeatureTable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
+      print("applyEdits applyEdits3 newFeature ${newFeature.attributes}");
+      setState(() {
+        features.add(newFeature);
+        _newFeatureAttributes.clear();
+      });
+      widget.refreshParent();
+      // Navigator.of(context).pop();
+    } catch (e) {
+      debugPrint('Create failed: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Create failed: $e')),
+      );
+    }
+  }
+
+  void _showCreateFeatureDialog() {
+    final intpProgressField = widget.relatedFeatureTable.fields.firstWhere(
+          (f) => f.name.toLowerCase() == 'intpprogress',
+      orElse: () => throw Exception('intpprogress field not found'),
+    );
+
+    final List<dynamic> codedValuesJson = intpProgressField.domain?.toJson()['codedValues'] ?? [];
+    final List<Map<String, dynamic>> codedValues = codedValuesJson.map((cv) {
+      return {
+        'code': cv['code'],
+        'name': cv['name'],
+      };
+    }).toList();
+
+    int? selectedCode;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Physical Progress'),
+        content: StatefulBuilder(
+          builder: (context, setState) {
+            return DropdownButtonFormField<int>(
+              decoration: const InputDecoration(
+                labelText: 'Physical Progress',
+                border: OutlineInputBorder(),
+              ),
+              value: selectedCode,
+              items: codedValues.map((cv) {
+                return DropdownMenuItem<int>(
+                  value: cv['code'],
+                  child: Text(cv['name']),
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() {
+                  selectedCode = val;
+                });
+              },
+              validator: (val) {
+                if (val == null) {
+                  return 'Please select a physical progress status';
+                }
+                return null;
+              },
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          ElevatedButton(
+            child: const Text('Create'),
+            onPressed: () async {
+              if (selectedCode == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please select a physical progress status')),
+                );
+                return;
+              }
+              _newFeatureAttributes.clear();
+
+              // Set the selected code to the 'intpprogress' field attribute name
+              _newFeatureAttributes[intpProgressField.name] = selectedCode;
+              await _createFeature();
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+// void _showCreateFeatureDialog() {
+//   // final fields = widget.relatedFeatureTable.fields
+//   //     .where((f) => !['OBJECTID', 'GLOBALID', 'SHAPE'].contains(f.name.toUpperCase()))
+//   //     .toList();
+//   final fields = widget.relatedFeatureTable.fields;
+//   showDialog(
+//     context: context,
+//     builder: (context) => AlertDialog(
+//       title: const Text('Add Related Feature'),
+//       content: Form(
+//         key: _formKey,
+//         child: SizedBox(
+//           width: double.maxFinite,
+//           child: ListView(
+//             shrinkWrap: true,
+//             children: fields.map((field) {
+//               debugPrint("field.name ${field.name} field.alias ${field.alias}");
+//               debugPrint("field.domain?.name ${field.domain?.name} field.domain?.fieldType.name ${field.domain?.fieldType.name}");
+//               debugPrint("field.domain?.name ${field.domain?.toJson()} field.domain?.runtimeType ${field.domain?.runtimeType}");
+//               return Padding(
+//                 padding: const EdgeInsets.symmetric(vertical: 6),
+//                 child: TextFormField(
+//                   decoration: InputDecoration(labelText: field.alias ?? field.name),
+//                   validator: (val) {
+//                     if (!field.nullable && (val == null || val.isEmpty)) {
+//                       return '${field.alias ?? field.name} is required';
+//                     }
+//                     return null;
+//                   },
+//                   onSaved: (val) {
+//                     _newFeatureAttributes[field.name] = val ?? '';
+//                   },
+//                 ),
+//               );
+//             }).toList(),
+//           ),
+//         ),
+//       ),
+//       actions: [
+//         TextButton(
+//           child: const Text('Cancel'),
+//           onPressed: () => Navigator.of(context).pop(),
+//         ),
+//         ElevatedButton(
+//           child: const Text('Create'),
+//           onPressed: _createFeature,
+//         ),
+//       ],
+//     ),
+//   );
+// }
 }
