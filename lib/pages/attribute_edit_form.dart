@@ -34,6 +34,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   List<Feature> _relatedFeatures = [];
   bool _relatedFeaturesLoading = false;
   ServiceFeatureTable? _mainFeatureTable;
+  bool showAttachmentError = false;
   @override
   void initState() {
     super.initState();
@@ -50,6 +51,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       widget.feature.attributes.entries.where((entry) =>
           popupFieldNames.contains(entry.key.toLowerCase())),
     );
+    debugPrint("_editedAttributes $_editedAttributes");
     if(widget.feature.featureTable is ServiceFeatureTable) {
       _mainFeatureTable = widget.feature.featureTable as ServiceFeatureTable;
     }
@@ -174,6 +176,81 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                 const SizedBox(height: 6),
                 ...filteredFields.map((field) => _buildFieldCard(field, popupFieldList)).toList(),
                 const SizedBox(height: 18),
+                // Card(
+                //   margin: const EdgeInsets.symmetric(vertical: 5),
+                //   child: Padding(
+                //     padding: const EdgeInsets.all(12),
+                //     child: Column(
+                //       crossAxisAlignment: CrossAxisAlignment.start,
+                //       children: [
+                //         Text(
+                //           "Attachments",
+                //           style: Theme.of(context)
+                //               .textTheme
+                //               .titleMedium
+                //               ?.copyWith(fontWeight: FontWeight.bold),
+                //         ),
+                //         const SizedBox(height: 6),
+                //         if (_attachmentsLoading) ...[
+                //           const Center(
+                //               child: Padding(
+                //                 padding: EdgeInsets.all(8),
+                //                 child: CircularProgressIndicator(),
+                //               )),
+                //         ] else ...[
+                //           Column(
+                //             children: [
+                //               ..._attachments.map((attachment) {
+                //                 return ListTile(
+                //                   dense: true,
+                //                   contentPadding: EdgeInsets.zero,
+                //                   leading: const Icon(Icons.attach_file),
+                //                   title:
+                //                   Text(attachment.name, overflow: TextOverflow.ellipsis),
+                //                   trailing: IconButton(
+                //                     icon: const Icon(Icons.delete, color: Colors.red),
+                //                     onPressed: () => _deleteAttachment(attachment),
+                //                   ),
+                //                   onTap: () {
+                //                     ScaffoldMessenger.of(context).showSnackBar(
+                //                       SnackBar(
+                //                           content: Text(
+                //                               'Open attachment: ${attachment.name}')),
+                //                     );
+                //                   },
+                //                 );
+                //               }),
+                //               ..._newAttachments.asMap().entries.map((entry) {
+                //                 int idx = entry.key;
+                //                 File file = entry.value;
+                //                 return ListTile(
+                //                   dense: true,
+                //                   contentPadding: EdgeInsets.zero,
+                //                   leading: const Icon(Icons.insert_drive_file),
+                //                   title:
+                //                   Text(file.path.split('/').last, overflow: TextOverflow.ellipsis),
+                //                   trailing: IconButton(
+                //                     icon: const Icon(Icons.remove_circle, color: Colors.red),
+                //                     onPressed: () => _removeNewAttachment(idx),
+                //                   ),
+                //                 );
+                //               }),
+                //               const SizedBox(height: 4),
+                //               Align(
+                //                 alignment: Alignment.centerRight,
+                //                 child: ElevatedButton.icon(
+                //                   icon: const Icon(Icons.add),
+                //                   label: const Text('Add Attachment'),
+                //                   onPressed: _addAttachment,
+                //                 ),
+                //               )
+                //             ],
+                //           ),
+                //         ],
+                //       ],
+                //     ),
+                //   ),
+                // ),
                 Card(
                   margin: const EdgeInsets.symmetric(vertical: 5),
                   child: Padding(
@@ -189,6 +266,21 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 6),
+                        // ERROR MESSAGE INLINE
+                        if (showAttachmentError)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error, color: Colors.red, size: 18),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  "Please add at least one attachment",
+                                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
+                                ),
+                              ],
+                            ),
+                          ),
                         if (_attachmentsLoading) ...[
                           const Center(
                               child: Padding(
@@ -297,7 +389,10 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                 // Refresh list after CRUD
                 final freshRelated = await getRelatedFeatures(widget.feature);
                 setState(() {
+                  debugPrint("refreshParent ${_relatedFeatures.length}");
+                  debugPrint("refreshParent freshRelated ${freshRelated.length}");
                   _relatedFeatures = freshRelated;
+                  debugPrint("refreshParent ${_relatedFeatures.length}");
                 });
               },
               feature: widget.feature,
@@ -331,6 +426,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     PopupField? findPopupField(String fieldName, List<PopupField> popupFields) {
       for (final pf in popupFields) {
         if (pf.fieldName.toLowerCase() == fieldName.toLowerCase()) {
+          debugPrint("pf.fieldName ${pf.fieldName}");
           return pf;
         }
       }
@@ -510,12 +606,17 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     _formKey.currentState?.save();
     debugPrint("_saveAttributes1 _attachments.isEmpty ${_attachments.isEmpty} _newAttachments.isEmpty ${_newAttachments.isEmpty}");
     if (_attachments.isEmpty && _newAttachments.isEmpty) {
-      ScaffoldMessenger.of(widget.parentScaffoldContext).showSnackBar(
-        const SnackBar(content: Text('Please add at least one attachment')),
-      );
+      setState(() {
+        showAttachmentError = true;
+      });
       debugPrint("_saveAttributes Please add at least one attachment");
       return;
+    } else {
+      setState(() {
+        showAttachmentError = false;
+      });
     }
+
     List<String> conversionErrors = [];
 
     for (var entry in _editedAttributes.entries) {
@@ -603,6 +704,24 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       //   debugPrint("attachmentsEnabled $attachmentsEnabled");
       // }
       _applyEdits(widget.feature);
+
+      ArcGISFeatureTable arcGISFeatureTable = relatedTables!.first;
+      debugPrint("arcGISFeatureTable.numberOfFeatures ${arcGISFeatureTable.numberOfFeatures}");
+      if(arcGISFeatureTable.numberOfFeatures==0)
+      {
+        final DateTime defaultDate = DateTime.now();
+        Map<String, dynamic> newAttributes = {
+          'GUID': widget.feature.attributes['globalid'], // link to parent
+          'intpprogress': 36,
+          'surveyordate': defaultDate,// example physical progress code
+          // other necessary attributes
+        };
+        final newFeature = arcGISFeatureTable.createFeature(attributes: newAttributes);
+        await arcGISFeatureTable.addFeature(newFeature);
+        debugPrint("applyEdits applyEdits2");
+        await (arcGISFeatureTable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
+        debugPrint("arcGISFeatureTable.numberOfFeatures ${arcGISFeatureTable.numberOfFeatures}");
+      }
       widget.onFormSaved();
     } catch (e) {
       if (mounted) {
@@ -693,6 +812,7 @@ class RelatedFeaturesTable extends StatefulWidget {
 
 class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
   late List<Feature> features;
+  late var maxPrevProgress;
   final _formKey = GlobalKey<FormState>();
   final Map<String, dynamic> _newFeatureAttributes = {};
   // late ServiceFeatureTable _relatedFeatureTable;
@@ -701,6 +821,22 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
     super.initState();
     features = List.from(widget.relatedFeatures);
     debugPrint("features ${features.length}");
+    // final relatedFeatures = widget.relatedFeatureTable.features;
+
+// Extract all intpprogress values
+    final progressValues = features.map((feature) {
+      debugPrint("feature ${feature.attributes}");
+      final rawValue = feature.attributes['intpprogress'];
+      return (rawValue != null) ? rawValue as int : 0;
+    }).toList();
+
+// Find maximum, or default to 0 if list is empty
+    maxPrevProgress = progressValues.isNotEmpty
+        ? progressValues.reduce((a, b) => a > b ? a : b)
+        : 0;
+
+    debugPrint("maxPrevProgress $maxPrevProgress");
+
   }
 
   @override
@@ -710,7 +846,9 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
         children: [
           const Text('No related features found.'),
           ElevatedButton(
-            onPressed: _showCreateFeatureDialog,
+          onPressed: () {
+          _showCreateFeatureDialog(maxPrevProgress);
+          },
             child: const Text('Add Related Feature'),
           )
         ],
@@ -780,7 +918,9 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
           ),
         ),
         ElevatedButton(
-          onPressed: _showCreateFeatureDialog,
+        onPressed: () {
+    _showCreateFeatureDialog(maxPrevProgress);
+    },
           child: const Text('Add Related Feature'),
         ),
       ],
@@ -830,8 +970,8 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
       };
       debugPrint("newAttributes $newAttributes");
       debugPrint("_newFeatureAttributes $_newFeatureAttributes");
-      // final newFeature = widget.relatedFeatureTable.createFeature(attributes: _newFeatureAttributes);
-      final newFeature = widget.relatedFeatureTable.createFeature(attributes: newAttributes);
+      final newFeature = widget.relatedFeatureTable.createFeature(attributes: _newFeatureAttributes);
+      // final newFeature = widget.relatedFeatureTable.createFeature(attributes: newAttributes);
       print("applyEdits applyEdits1 newFeature ${newFeature.attributes}");
       await widget.relatedFeatureTable.addFeature(newFeature);
       debugPrint("applyEdits applyEdits2");
@@ -851,7 +991,7 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
     }
   }
 
-  void _showCreateFeatureDialog() {
+  void _showCreateFeatureDialog(int maxPrevProgress) {
     final intpProgressField = widget.relatedFeatureTable.fields.firstWhere(
           (f) => f.name.toLowerCase() == 'intpprogress',
       orElse: () => throw Exception('intpprogress field not found'),
@@ -859,70 +999,239 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
 
     final List<dynamic> codedValuesJson = intpProgressField.domain?.toJson()['codedValues'] ?? [];
     final List<Map<String, dynamic>> codedValues = codedValuesJson.map((cv) {
-      return {
-        'code': cv['code'],
-        'name': cv['name'],
-      };
+      return {'code': cv['code'], 'name': cv['name']};
     }).toList();
 
     int? selectedCode;
+    List<PlatformFile> attachedFiles = [];
+    final DateTime defaultDate = DateTime.now();
+    final _formKey = GlobalKey<FormState>();
+
+    bool isLoading = false; // Loading indicator state
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Physical Progress'),
-        content: StatefulBuilder(
+      barrierDismissible: false, // Prevent dismissal while loading
+      builder: (context) {
+        return StatefulBuilder(
           builder: (context, setState) {
-            return DropdownButtonFormField<int>(
-              decoration: const InputDecoration(
-                labelText: 'Physical Progress',
-                border: OutlineInputBorder(),
-              ),
-              value: selectedCode,
-              items: codedValues.map((cv) {
-                return DropdownMenuItem<int>(
-                  value: cv['code'],
-                  child: Text(cv['name']),
-                );
-              }).toList(),
-              onChanged: (val) {
+            Future<void> _pickAttachments() async {
+              FilePickerResult? result = await FilePicker.platform.pickFiles(
+                type: FileType.custom,
+                allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
+                allowMultiple: true,
+              );
+              if (result != null) {
                 setState(() {
-                  selectedCode = val;
+                  attachedFiles.addAll(result.files);
                 });
-              },
-              validator: (val) {
-                if (val == null) {
-                  return 'Please select a physical progress status';
+              }
+            }
+
+            void _removeAttachment(int index) {
+              setState(() {
+                attachedFiles.removeAt(index);
+              });
+            }
+
+            String _mimeTypeForExtension(String ext) {
+              switch (ext.toLowerCase()) {
+                case '.jpg':
+                case '.jpeg':
+                  return 'image/jpeg';
+                case '.png':
+                  return 'image/png';
+                case '.pdf':
+                  return 'application/pdf';
+                case '.txt':
+                  return 'text/plain';
+                default:
+                  return 'application/octet-stream';
+              }
+            }
+
+            Future<void> _createFeatureWithAttachments() async {
+              if (!_formKey.currentState!.validate()) return;
+              _formKey.currentState!.save();
+
+              setState(() {
+                isLoading = true;
+              });
+
+              Map<String, dynamic> newAttributes = {
+                'GUID': widget.feature.attributes['globalid'],
+                intpProgressField.name: selectedCode,
+                'surveyordate': defaultDate,
+              };
+
+              try {
+                final newFeature =
+                widget.relatedFeatureTable.createFeature(attributes: newAttributes) as ArcGISFeature;
+                await widget.relatedFeatureTable.addFeature(newFeature);
+
+                for (final attachedFile in attachedFiles) {
+                  File file = File(attachedFile.path!);
+                  final bytes = await file.readAsBytes();
+                  final ext = path.extension(file.path).toLowerCase();
+                  final name = path.basename(file.path);
+                  await newFeature.addAttachment(
+                    name: name,
+                    contentType: _mimeTypeForExtension(ext),
+                    data: bytes,
+                  );
                 }
-                return null;
-              },
+
+                if (widget.relatedFeatureTable is ServiceFeatureTable) {
+                  await (widget.relatedFeatureTable as ServiceFeatureTable).updateFeature(newFeature);
+                  final applyEditsResult =
+                  await (widget.relatedFeatureTable as ServiceFeatureTable).applyEdits();
+                  if (applyEditsResult.isEmpty) {
+                    throw Exception('ApplyEdits returned no results, attachment may not be added');
+                  }
+                }
+
+                setState(() {
+                  attachedFiles.clear();
+                  features.add(newFeature);
+                });
+
+                widget.refreshParent();
+
+                Navigator.of(context).pop(); // Close dialog on success
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Create failed: $e')),
+                  );
+                }
+              } finally {
+                if (mounted) {
+                  setState(() {
+                    isLoading = false;
+                  });
+                }
+              }
+            }
+
+            return Dialog(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 350),
+                child: Stack(
+                  children: [
+                    SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: AbsorbPointer(
+                        absorbing: isLoading, // Disable form when loading
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Add Progress Entry', style: Theme.of(context).textTheme.headlineSmall),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                readOnly: true,
+                                initialValue: DateFormat('yyyy-MM-dd').format(defaultDate),
+                                decoration: const InputDecoration(
+                                  labelText: 'Survey Date',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              DropdownButtonFormField<int>(
+                                decoration: const InputDecoration(
+                                  labelText: 'Physical Progress',
+                                  border: OutlineInputBorder(),
+                                ),
+                                value: selectedCode,
+                                items: codedValues.map((cv) {
+                                  return DropdownMenuItem<int>(
+                                    value: cv['code'],
+                                    child: Text(cv['name']),
+                                  );
+                                }).toList(),
+                                onChanged: (val) => setState(() => selectedCode = val),
+                                validator: (val) {
+                                  if (val == null) {
+                                    return 'Please select a physical progress status';
+                                  }
+                                  if (val <= maxPrevProgress) {
+                                    return 'Progress must be higher than last recorded ($maxPrevProgress)';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              if (attachedFiles.isNotEmpty) ...[
+                                SizedBox(
+                                  height: 150,
+                                  child: ListView.builder(
+                                    shrinkWrap: true,
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    itemCount: attachedFiles.length,
+                                    itemBuilder: (context, index) {
+                                      final file = attachedFiles[index];
+                                      return ListTile(
+                                        dense: true,
+                                        title: Text(file.name, overflow: TextOverflow.ellipsis),
+                                        trailing: IconButton(
+                                          icon: const Icon(Icons.remove_circle, color: Colors.red),
+                                          onPressed: () => _removeAttachment(index),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.attach_file),
+                                label: const Text('Add Attachments'),
+                                onPressed: _pickAttachments,
+                              ),
+
+                              const SizedBox(height: 24),
+
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  TextButton(
+                                    onPressed: () {
+                                      if (!isLoading) Navigator.of(context).pop();
+                                    },
+                                    child: const Text('Cancel'),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  ElevatedButton(
+                                    onPressed: isLoading ? null : _createFeatureWithAttachments,
+                                    child: const Text('Create'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    if (isLoading)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withOpacity(0.4),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             );
           },
-        ),
-        actions: [
-          TextButton(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          ElevatedButton(
-            child: const Text('Create'),
-            onPressed: () async {
-              if (selectedCode == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please select a physical progress status')),
-                );
-                return;
-              }
-              _newFeatureAttributes.clear();
-
-              // Set the selected code to the 'intpprogress' field attribute name
-              _newFeatureAttributes[intpProgressField.name] = selectedCode;
-              await _createFeature();
-              Navigator.of(context).pop();
-            },
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
