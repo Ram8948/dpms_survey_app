@@ -383,7 +383,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
             // You may provide additional options if needed (title, etc.)
           );
         }
-        showFeatureActionPopup(feature as ArcGISFeature,_selectedLayer!,featurePopup!);
+        showFeatureActionPopup(feature as ArcGISFeature,_selectedLayer!,featurePopup!,widget.isOffline);
       } else {
         showMessageDialog('Error creating feature, geometry was null.');
       }

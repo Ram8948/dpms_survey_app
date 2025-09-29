@@ -196,25 +196,36 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Action when plus button is pressed.
-          if (_map != null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder:
-                    (_) => SnapGeometryEdits(
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'fab1',
+            onPressed: () {
+              if (_map != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SnapGeometryEdits(
                       portalUri: widget.portalUri,
                       webMapItemId: widget.webMapItemId,
                       isOffline: true,
                     ),
-              ),
-            );
-          }
-        },
-        tooltip: 'Add Survey',
-        child: const Icon(Icons.add),
+                  ),
+                );
+              }
+            },
+            tooltip: 'Add Survey',
+            child: const Icon(Icons.add),
+          ),
+          SizedBox(height: 16), // spacing between buttons
+          FloatingActionButton(
+            heroTag: 'fab2',
+            onPressed: _syncOfflineData,
+            tooltip: 'Sync Data',
+            child: const Icon(Icons.sync),
+          ),
+        ],
       ),
     );
   }
@@ -266,6 +277,91 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
       });
     }
   }
+
+  Future<void> _syncOfflineData() async {
+    setState(() {
+      _loadingFeature = true;
+    });
+    try {
+      if (_map == null) throw Exception("Map not loaded");
+      Geodatabase? geodatabase;
+      for (var table in _map!.tables) {
+        if (table is GeodatabaseFeatureTable) {
+          geodatabase = table.geodatabase;
+          break;
+        }
+      }
+      if (geodatabase == null) throw Exception("No geodatabase found in map");
+
+      final serviceUrl = Uri.parse("https://gis.mjpdpms.in/agserver/rest/services/DPMSTEST/CN1_Web_Actual_Testing/FeatureServer");
+      if (serviceUrl.toString().isEmpty) throw Exception("Service URL is empty");
+
+      final syncTask = GeodatabaseSyncTask.withUri(serviceUrl);
+      final syncParams = await syncTask.createDefaultSyncGeodatabaseParameters(geodatabase);
+      if (syncParams == null) throw Exception("Sync parameters are null");
+
+      final syncJob = syncTask.syncGeodatabase(parameters: syncParams, geodatabase: geodatabase);
+
+
+      debugPrint("SyncJob $syncJob");
+
+      syncJob.onStatusChanged.listen((status) {
+        debugPrint('Sync status: $status');
+
+        if (status == JobStatus.succeeded) {
+          setState(() {
+            _progress = null;
+            _loadingFeature = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Offline data synchronized successfully.')),
+          );
+        } else if (status == JobStatus.failed) {
+          setState(() {
+            _loadingFeature = false;
+            _progress = null;
+          });
+          debugPrint('Sync failed: ${syncJob.error}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Sync failed: ${syncJob.error?.message ?? 'Unknown error'}')),
+          );
+        }
+      });
+
+      // Listen to progress optionally
+      syncJob.onProgressChanged.listen((progress) {
+        debugPrint("Sync progress: $progress%");
+        setState(() {
+          _progress = progress;
+        });
+      });
+
+      syncJob.start();
+
+      // if (syncJob.status == JobStatus.succeeded) {
+      //   debugPrint("Sync completed successfully.");
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     SnackBar(content: Text('Offline data synchronized successfully.')),
+      //   );
+      // } else {
+      //   debugPrint("Sync failed: ${syncJob.error}");
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     SnackBar(content: Text('Sync failed: ${syncJob.error?.message ?? "Unknown error"}')),
+      //   );
+      // }
+    } catch (e) {
+      debugPrint("Sync error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sync error: $e')),
+      );
+    } finally {
+      setState(() {
+        _loadingFeature = false;
+        _progress = null;
+      });
+    }
+  }
+
 
   Future<void> downloadNewMap() async {
     setState(() {
@@ -322,7 +418,7 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
           _selectedFeatureLayer = featureLayer;
           _selectedFeature = feature;
 
-          showFeatureActionPopup(feature, featureLayer, featurePopup);
+          showFeatureActionPopup(feature, featureLayer, featurePopup, false);
           break;
         }
       }

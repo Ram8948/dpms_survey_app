@@ -11,6 +11,7 @@ class AttributeEditForm extends StatefulWidget {
   final Popup featurePopup;
   final VoidCallback onFormSaved;
   final BuildContext parentScaffoldContext;
+  final bool isOffline;
 
   const AttributeEditForm({
     required this.feature,
@@ -18,6 +19,7 @@ class AttributeEditForm extends StatefulWidget {
     required this.featurePopup,
     required this.onFormSaved,
     required this.parentScaffoldContext,
+    required this.isOffline,
     super.key,
   });
 
@@ -33,8 +35,10 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   bool _attachmentsLoading = true;
   List<Feature> _relatedFeatures = [];
   bool _relatedFeaturesLoading = false;
-  ServiceFeatureTable? _mainFeatureTable;
+  ArcGISFeatureTable? _mainFeatureTable;
   bool showAttachmentError = false;
+  int initProgress=0;
+  bool isSaving = false;
   @override
   void initState() {
     super.initState();
@@ -52,8 +56,14 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
           popupFieldNames.contains(entry.key.toLowerCase())),
     );
     debugPrint("_editedAttributes $_editedAttributes");
+    debugPrint("widget.feature.featureTable ${widget.feature.featureTable}");
     if(widget.feature.featureTable is ServiceFeatureTable) {
       _mainFeatureTable = widget.feature.featureTable as ServiceFeatureTable;
+      relatedTables = _mainFeatureTable?.getRelatedTables();
+    }
+    else  if(widget.feature.featureTable is GeodatabaseFeatureTable) {
+      _mainFeatureTable = widget.feature.featureTable as GeodatabaseFeatureTable;
+      relatedTables = _mainFeatureTable?.getRelatedTables();
     }
     _loadAttachments();
   }
@@ -347,11 +357,30 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                   label: const Text('Show Related Features'),
                   onPressed: _showRelatedFeaturesDialog,
                 ),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.save),
-                  onPressed: _saveAttributes,
-                  label: const Text('Save Changes'),
-                  style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+                // ElevatedButton.icon(
+                //   icon: const Icon(Icons.save),
+                //   onPressed: _saveAttributes,
+                //   label: const Text('Save Changes'),
+                //   style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+                // ),
+                Column(
+                  children: [
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.save),
+                      label: Text('Save Changes'),
+                      onPressed: isSaving ? null : _saveAttributes,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: Size(double.infinity, 48),
+                      ),
+                    ),
+                    if (isSaving)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 10),
               ],
@@ -472,6 +501,11 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
             }).toList(),
             onChanged: shouldBeEditable
                 ? (String? newValue) {
+              debugPrint("field.name ${field.name}");
+              if(field.name == "intpprogress")
+              {
+                  initProgress = int.tryParse(newValue!) ?? 0;
+              }
               setState(() {
                 _editedAttributes[field.name] = newValue;
               });
@@ -604,6 +638,10 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   Future<void> _saveAttributes() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     _formKey.currentState?.save();
+    // Show progress
+    setState(() {
+      isSaving = true;
+    });
     debugPrint("_saveAttributes1 _attachments.isEmpty ${_attachments.isEmpty} _newAttachments.isEmpty ${_newAttachments.isEmpty}");
     if (_attachments.isEmpty && _newAttachments.isEmpty) {
       setState(() {
@@ -678,12 +716,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     }
 
     try {
-      // await widget.feature.load();
-      // await widget.featureTable.updateFeature(widget.feature);
-      // if (widget.featureTable is ServiceFeatureTable) {
-      //   await (widget.featureTable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
-      // }
-      // Add attachments sequentially
       for (final file in _newAttachments) {
         final ext = path.extension(file.path).toLowerCase(); // Using path package
         final bytes = await file.readAsBytes();
@@ -699,52 +731,82 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       }
       bool attachmentsEnabled = widget.featureTable.hasAttachments ?? false;
       debugPrint("1attachmentsEnabled $attachmentsEnabled");
-      // if (widget.featureTable is ServiceFeatureTable) {
-      //   await (widget.featureTable as ServiceFeatureTable).applyEdits();
-      //   debugPrint("attachmentsEnabled $attachmentsEnabled");
-      // }
-      _applyEdits(widget.feature);
+      await _applyEdits(widget.feature);
+      debugPrint("_applyEdits Done");
 
+      // add first records on related table
       ArcGISFeatureTable arcGISFeatureTable = relatedTables!.first;
+      await arcGISFeatureTable.load();
       debugPrint("arcGISFeatureTable.numberOfFeatures ${arcGISFeatureTable.numberOfFeatures}");
-      if(arcGISFeatureTable.numberOfFeatures==0)
+      final relatedFeatures = await getRelatedFeatures(widget.feature);
+      debugPrint("relatedFeatures $relatedFeatures");
+      if(relatedFeatures.isEmpty)
       {
         final DateTime defaultDate = DateTime.now();
         Map<String, dynamic> newAttributes = {
           'GUID': widget.feature.attributes['globalid'], // link to parent
-          'intpprogress': 36,
+          'intpprogress': initProgress,
           'surveyordate': defaultDate,// example physical progress code
           // other necessary attributes
         };
-        final newFeature = arcGISFeatureTable.createFeature(attributes: newAttributes);
+        final newFeature = arcGISFeatureTable.createFeature(attributes: newAttributes) as ArcGISFeature;
         await arcGISFeatureTable.addFeature(newFeature);
         debugPrint("applyEdits applyEdits2");
-        await (arcGISFeatureTable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
+        for (final file in _newAttachments) {
+          final ext = path.extension(file.path).toLowerCase(); // Using path package
+          final bytes = await file.readAsBytes();
+          final name = file.path.split('/').last;
+          debugPrint('File extension: $ext');
+          bool attachmentsEnabled = arcGISFeatureTable.hasAttachments ?? false;
+          debugPrint("attachmentsEnabled $attachmentsEnabled");
+          await newFeature.addAttachment(
+            name: name,
+            contentType: _mimeTypeForExtension(ext), // optionally map to mime type
+            data: bytes,
+          );
+        }
+        await _applyEdits(newFeature);
         debugPrint("arcGISFeatureTable.numberOfFeatures ${arcGISFeatureTable.numberOfFeatures}");
       }
       widget.onFormSaved();
     } catch (e) {
       if (mounted) {
+        debugPrint("Error $e");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Update failed: $e')),
         );
       }
     }
+    finally {
+      if (mounted) {
+        setState(() {
+          isSaving = false;
+        });
+      }
+    }
   }
 
   Future<void> _applyEdits(ArcGISFeature selectedFeature) async {
-    final serviceFeatureTable =
-    widget.featureTable as ServiceFeatureTable;
+    final featureTable = selectedFeature.featureTable;
+
     try {
-      // Update the selected feature locally.
-      await serviceFeatureTable.updateFeature(selectedFeature);
-      // Apply the edits to the service.
-      await serviceFeatureTable.serviceGeodatabase!.applyEdits();
+      if (featureTable is ServiceFeatureTable) {
+        // Online or service geodatabase case
+        await featureTable.updateFeature(selectedFeature);
+        await featureTable.serviceGeodatabase!.applyEdits();
+      } else if (featureTable is GeodatabaseFeatureTable) {
+        // Offline geodatabase case
+        await featureTable.updateFeature(selectedFeature);
+        // await featureTable.applyEdits();
+      } else {
+        throw Exception("Unsupported feature table type for applyEdits");
+      }
     } on ArcGISException catch (e) {
       debugPrint("ArcGISException $e");
     }
     return Future.value();
   }
+
 
   String _mimeTypeForExtension(String ext) {
     switch (ext) {
@@ -761,9 +823,10 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   }
   List<ArcGISFeatureTable>? relatedTables;
   Future<List<Feature>> getRelatedFeatures(ArcGISFeature feature) async {
+    debugPrint("getRelatedFeatures");
     if (_mainFeatureTable == null) return [];
     final relatedResults = await _mainFeatureTable!.queryRelatedFeatures(feature: feature);
-
+    debugPrint("1getRelatedFeatures");
     relatedTables = _mainFeatureTable?.getRelatedTables();
     debugPrint("relatedTables; ${relatedTables?.length}");
     // for (final relatedTable in relatedTables!) {
@@ -929,7 +992,10 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
   Future<void> _deleteFeature(Feature feature) async {
     try {
       await widget.relatedFeatureTable.deleteFeature(feature);
-      await (widget.relatedFeatureTable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
+      if (widget.relatedFeatureTable is ServiceFeatureTable) {
+        final serviceFeatureTable = widget.relatedFeatureTable as ServiceFeatureTable;
+        await serviceFeatureTable.serviceGeodatabase!.applyEdits();
+      }
       setState(() {
         features.remove(feature);
       });
@@ -945,48 +1011,14 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
   Future<void> _updateFeature(Feature feature) async {
     try {
       await widget.relatedFeatureTable.updateFeature(feature);
-      await (widget.relatedFeatureTable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
+      if (widget.relatedFeatureTable is ServiceFeatureTable) {
+        final serviceFeatureTable = widget.relatedFeatureTable as ServiceFeatureTable;
+        await serviceFeatureTable.serviceGeodatabase!.applyEdits();
+      }
       widget.refreshParent();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Update failed: $e')),
-      );
-    }
-  }
-
-  Future<void> _createFeature() async {
-    // if (!_formKey.currentState!.validate()) return;
-    // _formKey.currentState!.save();
-
-    try {
-      // debugPrint("widget.feature.attributes ${widget.feature.attributes}",wrapWidth: 5000);
-      debugPrint("_relatedFeatureTable ${widget.relatedFeatureTable.tableName}");
-      // String guidStr = widget.feature.attributes['globalid'].toString().toUpperCase();
-      // if (!guidStr.startsWith("{")) guidStr = "{$guidStr}";
-      Map<String, dynamic> newAttributes = {
-        'GUID': widget.feature.attributes['globalid'], // link to parent
-        'intpprogress': 36, // example physical progress code
-        // other necessary attributes
-      };
-      debugPrint("newAttributes $newAttributes");
-      debugPrint("_newFeatureAttributes $_newFeatureAttributes");
-      final newFeature = widget.relatedFeatureTable.createFeature(attributes: _newFeatureAttributes);
-      // final newFeature = widget.relatedFeatureTable.createFeature(attributes: newAttributes);
-      print("applyEdits applyEdits1 newFeature ${newFeature.attributes}");
-      await widget.relatedFeatureTable.addFeature(newFeature);
-      debugPrint("applyEdits applyEdits2");
-      await (widget.relatedFeatureTable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
-      print("applyEdits applyEdits3 newFeature ${newFeature.attributes}");
-      setState(() {
-        features.add(newFeature);
-        _newFeatureAttributes.clear();
-      });
-      widget.refreshParent();
-      // Navigator.of(context).pop();
-    } catch (e) {
-      debugPrint('Create failed: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Create failed: $e')),
       );
     }
   }
@@ -1015,7 +1047,7 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            Future<void> _pickAttachments() async {
+            Future<void> pickAttachments() async {
               FilePickerResult? result = await FilePicker.platform.pickFiles(
                 type: FileType.custom,
                 allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
@@ -1028,13 +1060,13 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
               }
             }
 
-            void _removeAttachment(int index) {
+            void removeAttachment(int index) {
               setState(() {
                 attachedFiles.removeAt(index);
               });
             }
 
-            String _mimeTypeForExtension(String ext) {
+            String mimeTypeForExtension(String ext) {
               switch (ext.toLowerCase()) {
                 case '.jpg':
                 case '.jpeg':
@@ -1050,7 +1082,7 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
               }
             }
 
-            Future<void> _createFeatureWithAttachments() async {
+            Future<void> createFeatureWithAttachments() async {
               if (!_formKey.currentState!.validate()) return;
               _formKey.currentState!.save();
 
@@ -1076,19 +1108,37 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                   final name = path.basename(file.path);
                   await newFeature.addAttachment(
                     name: name,
-                    contentType: _mimeTypeForExtension(ext),
+                    contentType: mimeTypeForExtension(ext),
                     data: bytes,
                   );
                 }
 
+                // if (widget.relatedFeatureTable is ServiceFeatureTable) {
+                //   await (widget.relatedFeatureTable as ServiceFeatureTable).updateFeature(newFeature);
+                //   final applyEditsResult =
+                //   await (widget.relatedFeatureTable as ServiceFeatureTable).applyEdits();
+                //   if (applyEditsResult.isEmpty) {
+                //     throw Exception('ApplyEdits returned no results, attachment may not be added');
+                //   }
+                // }
                 if (widget.relatedFeatureTable is ServiceFeatureTable) {
-                  await (widget.relatedFeatureTable as ServiceFeatureTable).updateFeature(newFeature);
-                  final applyEditsResult =
-                  await (widget.relatedFeatureTable as ServiceFeatureTable).applyEdits();
+                  // Online or offline service geodatabase case
+                  final serviceFeatureTable = widget.relatedFeatureTable as ServiceFeatureTable;
+                  await serviceFeatureTable.updateFeature(newFeature);
+                  final applyEditsResult = await serviceFeatureTable.applyEdits();
                   if (applyEditsResult.isEmpty) {
                     throw Exception('ApplyEdits returned no results, attachment may not be added');
                   }
+                } else if (widget.relatedFeatureTable is GeodatabaseFeatureTable) {
+                  // Offline local geodatabase case
+                  final geodatabaseFeatureTable = widget.relatedFeatureTable as GeodatabaseFeatureTable;
+                  await geodatabaseFeatureTable.updateFeature(newFeature);
+                  // No applyEdits() call needed for GeodatabaseFeatureTable offline mode,
+                  // changes are saved immediately.
+                } else {
+                  throw Exception('Unsupported feature table type for updating features');
                 }
+
 
                 setState(() {
                   attachedFiles.clear();
@@ -1177,7 +1227,7 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                                         title: Text(file.name, overflow: TextOverflow.ellipsis),
                                         trailing: IconButton(
                                           icon: const Icon(Icons.remove_circle, color: Colors.red),
-                                          onPressed: () => _removeAttachment(index),
+                                          onPressed: () => removeAttachment(index),
                                         ),
                                       );
                                     },
@@ -1189,7 +1239,7 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                               ElevatedButton.icon(
                                 icon: const Icon(Icons.attach_file),
                                 label: const Text('Add Attachments'),
-                                onPressed: _pickAttachments,
+                                onPressed: pickAttachments,
                               ),
 
                               const SizedBox(height: 24),
@@ -1205,7 +1255,7 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                                   ),
                                   const SizedBox(width: 16),
                                   ElevatedButton(
-                                    onPressed: isLoading ? null : _createFeatureWithAttachments,
+                                    onPressed: isLoading ? null : createFeatureWithAttachments,
                                     child: const Text('Create'),
                                   ),
                                 ],
@@ -1234,56 +1284,4 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
       },
     );
   }
-
-// void _showCreateFeatureDialog() {
-//   // final fields = widget.relatedFeatureTable.fields
-//   //     .where((f) => !['OBJECTID', 'GLOBALID', 'SHAPE'].contains(f.name.toUpperCase()))
-//   //     .toList();
-//   final fields = widget.relatedFeatureTable.fields;
-//   showDialog(
-//     context: context,
-//     builder: (context) => AlertDialog(
-//       title: const Text('Add Related Feature'),
-//       content: Form(
-//         key: _formKey,
-//         child: SizedBox(
-//           width: double.maxFinite,
-//           child: ListView(
-//             shrinkWrap: true,
-//             children: fields.map((field) {
-//               debugPrint("field.name ${field.name} field.alias ${field.alias}");
-//               debugPrint("field.domain?.name ${field.domain?.name} field.domain?.fieldType.name ${field.domain?.fieldType.name}");
-//               debugPrint("field.domain?.name ${field.domain?.toJson()} field.domain?.runtimeType ${field.domain?.runtimeType}");
-//               return Padding(
-//                 padding: const EdgeInsets.symmetric(vertical: 6),
-//                 child: TextFormField(
-//                   decoration: InputDecoration(labelText: field.alias ?? field.name),
-//                   validator: (val) {
-//                     if (!field.nullable && (val == null || val.isEmpty)) {
-//                       return '${field.alias ?? field.name} is required';
-//                     }
-//                     return null;
-//                   },
-//                   onSaved: (val) {
-//                     _newFeatureAttributes[field.name] = val ?? '';
-//                   },
-//                 ),
-//               );
-//             }).toList(),
-//           ),
-//         ),
-//       ),
-//       actions: [
-//         TextButton(
-//           child: const Text('Cancel'),
-//           onPressed: () => Navigator.of(context).pop(),
-//         ),
-//         ElevatedButton(
-//           child: const Text('Create'),
-//           onPressed: _createFeature,
-//         ),
-//       ],
-//     ),
-//   );
-// }
 }

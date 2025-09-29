@@ -23,7 +23,7 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
     }
   }
 
-  void showFeatureActionPopup(ArcGISFeature feature, FeatureLayer featureLayer,Popup featurePopup) {
+  void showFeatureActionPopup(ArcGISFeature feature, FeatureLayer featureLayer,Popup featurePopup,bool isOffline) {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
@@ -36,7 +36,7 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
                 title: const Text('Update Feature'),
                 onTap: () {
                   Navigator.pop(context); // Close the bottom sheet
-                  openAttributeEditForm(feature, featureLayer,featurePopup);
+                  openAttributeEditForm(feature, featureLayer,featurePopup,isOffline);
                 },
               ),
               ListTile(
@@ -44,7 +44,7 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
                 title: const Text('Delete Feature', style: TextStyle(color: Colors.red)),
                 onTap: () {
                   Navigator.pop(context); // Close the bottom sheet
-                  _deleteFeature(feature, featureLayer);
+                  _deleteFeature(feature, featureLayer,isOffline);
                 },
               ),
             ],
@@ -54,7 +54,7 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
     );
   }
 
-  Future<void> _deleteFeature(ArcGISFeature feature, FeatureLayer featureLayer) async {
+  Future<void> _deleteFeature(ArcGISFeature feature, FeatureLayer featureLayer, bool isOffline) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -124,6 +124,7 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
       ArcGISFeature feature,
       FeatureLayer layer,
       Popup featurePopup,
+      bool isOffline
       ) async {
     await showModalBottomSheet(
       context: context,
@@ -146,6 +147,7 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
             }
           },
           parentScaffoldContext: context,
+          isOffline: isOffline,
         ),
       ),
     );

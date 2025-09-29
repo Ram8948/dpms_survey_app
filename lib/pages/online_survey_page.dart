@@ -138,7 +138,7 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage> with SampleStateSup
           featureLayer.selectFeatures([feature]);
 
           // Showing popup or feature editing UI
-          showFeatureActionPopup(feature, featureLayer, result.popups.first);
+          showFeatureActionPopup(feature, featureLayer, result.popups.first,false);
 
           break;
         }
