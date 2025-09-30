@@ -122,19 +122,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   }
 
   String getFeatureTitle() {
-    if (widget.feature.attributes.containsKey('Name')) {
-      final val = widget.feature.attributes['Name'];
-      if (val != null && val.toString().isNotEmpty) {
-        return val.toString();
-      }
-    }
-    final layerName =
-        widget.featureTable.layerInfo?.serviceLayerName ?? 'Feature Layer';
-
-    if (widget.feature.attributes.containsKey('OBJECTID')) {
-      return '$layerName #${widget.feature.attributes['OBJECTID']}';
-    }
-
+    final layerName = widget.featureTable.layerInfo?.serviceLayerName ?? 'Feature Layer';
     return layerName;
   }
 

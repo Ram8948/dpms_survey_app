@@ -348,11 +348,20 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
 
         // Update the feature to get the updated objectid - a temporary ID is used before the feature is added.
         feature.refresh();
+        debugPrint("Attribute keys: ${feature.attributes.keys.toList()}");
         final attributes = await getSchemeNameFromExtent(feature.geometry);
         if(attributes!=null)
         {
+          debugPrint("Attribute keys: ${attributes.keys.toList()}");
+          debugPrint("Attribute keys: ${attributes["regionname"]}");
+          debugPrint("Attribute keys: ${attributes["circlename"]}");
+          debugPrint("Attribute keys: ${attributes["division_name"]}");
+
           feature.attributes['name'] = attributes["schemename"];
           feature.attributes['id'] = attributes["schemeid"];
+          feature.attributes['region'] = attributes["regionname"];
+          feature.attributes['circle'] = attributes["circlename"];
+          feature.attributes['division'] = attributes["division_name"];
         }
         // Confirm feature addition.
         showMessageDialog('Created feature ${feature.attributes['objectid']}');
