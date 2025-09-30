@@ -55,6 +55,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       widget.feature.attributes.entries.where((entry) =>
           popupFieldNames.contains(entry.key.toLowerCase())),
     );
+    debugPrint("_editedAttributes ${widget.feature.attributes}");
     debugPrint("_editedAttributes $_editedAttributes");
     debugPrint("widget.feature.featureTable ${widget.feature.featureTable}");
     if(widget.feature.featureTable is ServiceFeatureTable) {

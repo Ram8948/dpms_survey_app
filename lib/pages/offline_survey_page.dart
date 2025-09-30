@@ -447,6 +447,8 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
       connection: PortalConnection.authenticated,
     );
     await portal.load();
+    // final licenseInfo = await portal.fetchLicenseInfo();
+    // final licenseResult = ArcGISEnvironment.setLicenseUsingInfo(licenseInfo);
     final portalItem = PortalItem.withPortalAndItemId(
       portal: portal,
       itemId: widget.webMapItemId,

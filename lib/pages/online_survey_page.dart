@@ -43,6 +43,8 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage> with SampleStateSup
       connection: PortalConnection.authenticated,
     );
     await portal.load();
+    // final licenseInfo = await portal.fetchLicenseInfo();
+    // final licenseResult = ArcGISEnvironment.setLicenseUsingInfo(licenseInfo);
     final portalItem = PortalItem.withPortalAndItemId(
       portal: portal,
       itemId: widget.webMapItemId,

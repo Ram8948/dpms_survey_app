@@ -348,7 +348,12 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
 
         // Update the feature to get the updated objectid - a temporary ID is used before the feature is added.
         feature.refresh();
-
+        final attributes = await getSchemeNameFromExtent(feature.geometry);
+        if(attributes!=null)
+        {
+          feature.attributes['name'] = attributes["schemename"];
+          feature.attributes['id'] = attributes["schemeid"];
+        }
         // Confirm feature addition.
         showMessageDialog('Created feature ${feature.attributes['objectid']}');
         // openAttributeEditForm(feature as ArcGISFeature,_selectedLayer!);
@@ -799,6 +804,52 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
       ),
     ];
   }
+
+  Future<Map<String, dynamic>?> getSchemeNameFromExtent(Geometry? featureGeometry) async {
+    // Find the FeatureLayer named 'SchemeExtent' from the map's operational layers
+    final schemeExtentLayer = _map.operationalLayers
+        .whereType<FeatureLayer>()
+        .firstWhere((layer) => layer.name == 'SchemeExtent', orElse: () => throw Exception('SchemeExtent layer not found'));
+
+    // Create QueryParameters with spatial relationship 'intersects' and no geometry return
+    final queryParams = QueryParameters()
+      ..geometry = featureGeometry
+      ..spatialRelationship = SpatialRelationship.intersects
+      ..returnGeometry = false;
+
+    // Use the featureTable from the layer, cast as ServiceFeatureTable
+    final featureTable = schemeExtentLayer.featureTable as ServiceFeatureTable;
+
+    // Perform the query on the feature table
+    // final queryResult = await featureTable.queryFeatures(queryParams);
+
+    final queryResult = await featureTable.queryFeaturesWithFieldOptions(
+      parameters: queryParams, queryFeatureFields: QueryFeatureFields.loadAll, // Option to load all fields
+    );
+
+    // Get the features from the query result
+    final features = queryResult.features();
+
+    if (features.isNotEmpty) {
+      final firstFeature = features.first;
+      final attributes = firstFeature.attributes;
+      debugPrint('getSchemeNameFromExtent attributes: $attributes');
+      // Safely extract schemename and schemeid attributes
+      final schemename = attributes['schemename'] as String?;
+      final schemeid = attributes['schemeid'] as int?;
+
+      debugPrint('Scheme Name: $schemename');
+      debugPrint('Scheme ID: $schemeid');
+
+      // Return the attributes map
+      return attributes;
+    }
+    return null;
+  }
+
+
+
+
 }
 extension on String {
   // An extension on String to capitalize the first character of the String.
