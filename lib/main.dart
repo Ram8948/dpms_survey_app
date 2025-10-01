@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:arcgis_maps/arcgis_maps.dart';
 
 void main() {
-  // const apiKey = 'AAPK02c8ef93a9984180bbebab60498ccd5eFkjYiIVXsIc4VFPBm0Bu82nzFI6eIJDNHBBiRUlRmuyNxfvjf_MKL30fVpuRcmlA';
-  // if (apiKey.isEmpty) {
-  //   throw Exception('API key undefined');
-  // } else {
-  //   ArcGISEnvironment.apiKey = apiKey;
-  // }
+  const apiKey = 'AAPK02c8ef93a9984180bbebab60498ccd5eFkjYiIVXsIc4VFPBm0Bu82nzFI6eIJDNHBBiRUlRmuyNxfvjf_MKL30fVpuRcmlA';
+  if (apiKey.isEmpty) {
+    throw Exception('API key undefined');
+  } else {
+    ArcGISEnvironment.apiKey = apiKey;
+  }
   runApp(const MyApp());
 }
 
