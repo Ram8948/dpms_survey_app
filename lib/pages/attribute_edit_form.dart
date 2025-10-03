@@ -500,7 +500,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     PopupField? findPopupField(String fieldName, List<PopupField> popupFields) {
       for (final pf in popupFields) {
         if (pf.fieldName.toLowerCase() == fieldName.toLowerCase()) {
-          debugPrint("pf.fieldName ${pf.fieldName}");
+          // debugPrint("pf.fieldName ${pf.fieldName}");
           return pf;
         }
       }

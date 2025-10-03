@@ -201,15 +201,16 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
         children: [
           FloatingActionButton(
             heroTag: 'fab1',
-            onPressed: () {
+            onPressed: () async {
               if (_map != null) {
+                final Viewpoint? sourceViewpoint = await _mapViewController.getCurrentViewpoint(ViewpointType.centerAndScale);
                 final result = Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => SnapGeometryEdits(
                       portalUri: widget.portalUri,
                       webMapItemId: widget.webMapItemId,
-                      isOffline: true,
+                      isOffline: true, viewPoint:sourceViewpoint!,
                     ),
                   ),
                 );
@@ -423,7 +424,16 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
           _selectedFeatureLayer = featureLayer;
           _selectedFeature = feature;
 
-          showFeatureActionPopup(feature, featureLayer, featurePopup, false);
+          showFeatureActionPopup(feature, featureLayer, featurePopup, false,() {
+            // Navigator.pop(context);
+            // if (mounted) {
+            //   ScaffoldMessenger.of(context).showSnackBar(
+            //     const SnackBar(
+            //       content: Text('Feature successfully updated'),
+            //     ),
+            //   );
+            // }
+          });
           break;
         }
       }

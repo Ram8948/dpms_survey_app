@@ -97,9 +97,10 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
+        onPressed: () async {
           if (_map != null) {
-            final result = Navigator.push(
+            final Viewpoint? sourceViewpoint = await _mapViewController.getCurrentViewpoint(ViewpointType.centerAndScale);
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(
                 builder:
@@ -107,6 +108,7 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
                       portalUri: widget.portalUri,
                       webMapItemId: widget.webMapItemId,
                       isOffline: false,
+                        viewPoint:sourceViewpoint!
                     ),
               ),
             );
@@ -153,7 +155,16 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
             feature,
             featureLayer,
             result.popups.first,
-            false,
+            false, () {
+                // Navigator.pop(context);
+            //                 // if (mounted) {
+            //                 //   ScaffoldMessenger.of(context).showSnackBar(
+            //                 //     const SnackBar(
+            //                 //       content: Text('Feature successfully updated'),
+            //                 //     ),
+            //                 //   );
+            //                 // }
+          }
           );
 
           break;

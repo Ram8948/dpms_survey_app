@@ -9,11 +9,13 @@ class SnapGeometryEdits extends StatefulWidget {
   final Uri portalUri;
   final String webMapItemId;
   final bool isOffline;
+  final Viewpoint viewPoint;
   const SnapGeometryEdits({
     super.key,
     required this.portalUri,
     required this.webMapItemId,
     required this.isOffline,
+    required this.viewPoint
   });
 
   @override
@@ -146,6 +148,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
         throw Exception('No maps found in the mobile map package.');
       }
     }
+    _mapViewController.setViewpoint(widget.viewPoint);
     _map.loadSettings.featureTilingMode =
         FeatureTilingMode.enabledWithFullResolutionWhenSupported;
     // Add the graphics overlay to the map view.
@@ -397,8 +400,20 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
             // You may provide additional options if needed (title, etc.)
           );
         }
-        await showFeatureActionPopup(feature as ArcGISFeature,_selectedLayer!,featurePopup!,widget.isOffline);
-        final Viewpoint? sourceViewpoint = await _mapViewController.getCurrentViewpoint(ViewpointType.centerAndScale);
+        await showFeatureActionPopup(feature as ArcGISFeature,_selectedLayer!,featurePopup!,widget.isOffline,() async {
+          final Viewpoint? sourceViewpoint = await _mapViewController.getCurrentViewpoint(ViewpointType.centerAndScale);
+          if (!mounted) return;
+
+          Navigator.pop(context, sourceViewpoint);
+          Navigator.pop(context, sourceViewpoint);
+
+          // Future.delayed(Duration(seconds: 4), () {
+          //   if (!mounted) return; // Ensure widget is still mounted
+          //   Navigator.pop(context, sourceViewpoint);
+          //   debugPrint("showFeatureActionPopup sourceViewpoint $sourceViewpoint");
+          // });
+
+        });
         // Navigator.pop(context, sourceViewpoint);
       } else {
         showMessageDialog('Error creating feature, geometry was null.');
@@ -558,6 +573,10 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
                     child: ElevatedButton(
                       onPressed:
                       _geometryEditorIsStarted ? stopAndDiscardEdits : null,
+                      // onPressed: ()
+                      // {
+                      //   Navigator.pop(context);
+                      // },
                       child: const Icon(Icons.not_interested_sharp),
                     ),
                   ),
