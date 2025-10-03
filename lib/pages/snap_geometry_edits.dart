@@ -397,7 +397,9 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
             // You may provide additional options if needed (title, etc.)
           );
         }
-        showFeatureActionPopup(feature as ArcGISFeature,_selectedLayer!,featurePopup!,widget.isOffline);
+        await showFeatureActionPopup(feature as ArcGISFeature,_selectedLayer!,featurePopup!,widget.isOffline);
+        final Viewpoint? sourceViewpoint = await _mapViewController.getCurrentViewpoint(ViewpointType.centerAndScale);
+        // Navigator.pop(context, sourceViewpoint);
       } else {
         showMessageDialog('Error creating feature, geometry was null.');
       }
@@ -828,19 +830,38 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
       ..returnGeometry = false;
     debugPrint("getSchemeNameFromExtent queryParams $queryParams");
     // Use the featureTable from the layer, cast as ServiceFeatureTable
-    final featureTable = schemeExtentLayer.featureTable as ServiceFeatureTable;
-    debugPrint("getSchemeNameFromExtent featureTable $featureTable");
+    ArcGISFeatureTable? featureTable;
+    if(schemeExtentLayer.featureTable is ServiceFeatureTable)
+    {
+      featureTable = schemeExtentLayer.featureTable as ServiceFeatureTable;
+      debugPrint("getSchemeNameFromExtent featureTable $featureTable");
+    }
+    else if(schemeExtentLayer.featureTable is GeodatabaseFeatureTable)
+    {
+      featureTable = schemeExtentLayer.featureTable as GeodatabaseFeatureTable;
+      debugPrint("getSchemeNameFromExtent featureTable $featureTable");
+    }
     // Perform the query on the feature table
     // final queryResult = await featureTable.queryFeatures(queryParams);
+    FeatureQueryResult? queryResult;
+    if(featureTable is ServiceFeatureTable)
+    {
+      queryResult = await featureTable.queryFeaturesWithFieldOptions(
+        parameters: queryParams, queryFeatureFields: QueryFeatureFields.loadAll, // Option to load all fields
+      );
+      debugPrint("getSchemeNameFromExtent queryResult $queryResult");
+    }
+    else if(schemeExtentLayer.featureTable is GeodatabaseFeatureTable)
+    {
+      queryResult = await (featureTable as GeodatabaseFeatureTable).queryFeatures(queryParams);
+      debugPrint("getSchemeNameFromExtent queryResult $queryResult");
+    }
 
-    final queryResult = await featureTable.queryFeaturesWithFieldOptions(
-      parameters: queryParams, queryFeatureFields: QueryFeatureFields.loadAll, // Option to load all fields
-    );
-    debugPrint("getSchemeNameFromExtent queryResult $queryResult");
+
     // Get the features from the query result
-    final features = queryResult.features();
-    debugPrint("getSchemeNameFromExtent features.isNotEmpty ${features.isNotEmpty}");
-    if (features.isNotEmpty) {
+    final features = queryResult?.features();
+    debugPrint("getSchemeNameFromExtent features.isNotEmpty ${features?.isNotEmpty}");
+    if (features!=null&& features.isNotEmpty) {
       final firstFeature = features.first;
       final attributes = firstFeature.attributes;
       debugPrint('getSchemeNameFromExtent attributes: $attributes');

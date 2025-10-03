@@ -203,7 +203,7 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
             heroTag: 'fab1',
             onPressed: () {
               if (_map != null) {
-                Navigator.push(
+                final result = Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => SnapGeometryEdits(
@@ -213,6 +213,11 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
                     ),
                   ),
                 );
+                if (result != null) {
+                  print('Received result: $result');
+                  _mapViewController.setViewpoint(result as Viewpoint);
+                  // Handle the result data
+                }
               }
             },
             tooltip: 'Add Survey',

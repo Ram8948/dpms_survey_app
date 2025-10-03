@@ -22,7 +22,8 @@ class OnlineSurveyPage extends StatefulWidget {
   State<OnlineSurveyPage> createState() => _OnlineSurveyPageState();
 }
 
-class _OnlineSurveyPageState extends State<OnlineSurveyPage> with SampleStateSupport {
+class _OnlineSurveyPageState extends State<OnlineSurveyPage>
+    with SampleStateSupport {
   final _mapViewController = ArcGISMapView.createController();
 
   bool _loadingFeature = false;
@@ -70,7 +71,8 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage> with SampleStateSup
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle.light, // For light status bar icons
+        systemOverlayStyle:
+            SystemUiOverlayStyle.light, // For light status bar icons
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -94,26 +96,32 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage> with SampleStateSup
           ],
         ),
       ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            if (_map != null) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SnapGeometryEdits(
-                    portalUri: widget.portalUri,
-                    webMapItemId: widget.webMapItemId,
-                    isOffline: false,
-                  ),
-                ),
-              );
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          if (_map != null) {
+            final result = Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder:
+                    (_) => SnapGeometryEdits(
+                      portalUri: widget.portalUri,
+                      webMapItemId: widget.webMapItemId,
+                      isOffline: false,
+                    ),
+              ),
+            );
+            if (result != null) {
+              print('Received result: $result');
+              _mapViewController.setViewpoint(result as Viewpoint);
+              // Handle the result data
             }
-          },
-          tooltip: 'Add Survey',
-          backgroundColor: Colors.blue.shade900,
-          foregroundColor: Colors.white,  // Icon color set explicitly to white
-          child: const Icon(Icons.add),
-        ),
+          }
+        },
+        tooltip: 'Add Survey',
+        backgroundColor: Colors.blue.shade900,
+        foregroundColor: Colors.white, // Icon color set explicitly to white
+        child: const Icon(Icons.add),
+      ),
     );
   }
 
@@ -133,14 +141,20 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage> with SampleStateSup
       );
 
       for (var result in identifyResults) {
-        if (result.geoElements.isNotEmpty && result.layerContent is FeatureLayer) {
+        if (result.geoElements.isNotEmpty &&
+            result.layerContent is FeatureLayer) {
           final featureLayer = result.layerContent as FeatureLayer;
           final feature = result.geoElements.first as ArcGISFeature;
 
           featureLayer.selectFeatures([feature]);
 
           // Showing popup or feature editing UI
-          showFeatureActionPopup(feature, featureLayer, result.popups.first,false);
+          showFeatureActionPopup(
+            feature,
+            featureLayer,
+            result.popups.first,
+            false,
+          );
 
           break;
         }
@@ -148,9 +162,9 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage> with SampleStateSup
     } catch (e) {
       if (mounted) {
         debugPrint("Identify failed: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Identify error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Identify error: $e')));
       }
     } finally {
       if (mounted) setState(() => _loadingFeature = false);

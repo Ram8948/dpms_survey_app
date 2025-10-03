@@ -23,7 +23,7 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
     }
   }
 
-  void showFeatureActionPopup(ArcGISFeature feature, FeatureLayer featureLayer,Popup featurePopup,bool isOffline) {
+  Future<void> showFeatureActionPopup(ArcGISFeature feature, FeatureLayer featureLayer,Popup featurePopup,bool isOffline) async {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
