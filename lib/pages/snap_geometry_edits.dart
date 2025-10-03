@@ -816,29 +816,30 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
 
   Future<Map<String, dynamic>?> getSchemeNameFromExtent(Geometry? featureGeometry) async {
     // Find the FeatureLayer named 'SchemeExtent' from the map's operational layers
+    debugPrint("getSchemeNameFromExtent ");
     final schemeExtentLayer = _map.operationalLayers
         .whereType<FeatureLayer>()
         .firstWhere((layer) => layer.name == 'SchemeExtent', orElse: () => throw Exception('SchemeExtent layer not found'));
-
+    debugPrint("getSchemeNameFromExtent schemeExtentLayer $schemeExtentLayer");
     // Create QueryParameters with spatial relationship 'intersects' and no geometry return
     final queryParams = QueryParameters()
       ..geometry = featureGeometry
       ..spatialRelationship = SpatialRelationship.intersects
       ..returnGeometry = false;
-
+    debugPrint("getSchemeNameFromExtent queryParams $queryParams");
     // Use the featureTable from the layer, cast as ServiceFeatureTable
     final featureTable = schemeExtentLayer.featureTable as ServiceFeatureTable;
-
+    debugPrint("getSchemeNameFromExtent featureTable $featureTable");
     // Perform the query on the feature table
     // final queryResult = await featureTable.queryFeatures(queryParams);
 
     final queryResult = await featureTable.queryFeaturesWithFieldOptions(
       parameters: queryParams, queryFeatureFields: QueryFeatureFields.loadAll, // Option to load all fields
     );
-
+    debugPrint("getSchemeNameFromExtent queryResult $queryResult");
     // Get the features from the query result
     final features = queryResult.features();
-
+    debugPrint("getSchemeNameFromExtent features.isNotEmpty ${features.isNotEmpty}");
     if (features.isNotEmpty) {
       final firstFeature = features.first;
       final attributes = firstFeature.attributes;

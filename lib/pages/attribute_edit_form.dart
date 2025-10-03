@@ -37,33 +37,35 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   bool _relatedFeaturesLoading = false;
   ArcGISFeatureTable? _mainFeatureTable;
   bool showAttachmentError = false;
-  int initProgress=0;
+  int initProgress = 0;
   bool isSaving = false;
+
   @override
   void initState() {
     super.initState();
-    final popupFields = widget.featurePopup.popupDefinition.fields.where((pf) =>
-    (pf.isVisible ?? true));
+    final popupFields = widget.featurePopup.popupDefinition.fields.where(
+      (pf) => (pf.isVisible ?? true),
+    );
 
     final popupFieldList = popupFields.toList();
 
-    final popupFieldNames = popupFieldList
-        .map((pf) => pf.fieldName.toLowerCase())
-        .toSet();
+    final popupFieldNames =
+        popupFieldList.map((pf) => pf.fieldName.toLowerCase()).toSet();
 
     _editedAttributes = Map<String, dynamic>.fromEntries(
-      widget.feature.attributes.entries.where((entry) =>
-          popupFieldNames.contains(entry.key.toLowerCase())),
+      widget.feature.attributes.entries.where(
+        (entry) => popupFieldNames.contains(entry.key.toLowerCase()),
+      ),
     );
     debugPrint("_editedAttributes ${widget.feature.attributes}");
     debugPrint("_editedAttributes $_editedAttributes");
     debugPrint("widget.feature.featureTable ${widget.feature.featureTable}");
-    if(widget.feature.featureTable is ServiceFeatureTable) {
+    if (widget.feature.featureTable is ServiceFeatureTable) {
       _mainFeatureTable = widget.feature.featureTable as ServiceFeatureTable;
       relatedTables = _mainFeatureTable?.getRelatedTables();
-    }
-    else  if(widget.feature.featureTable is GeodatabaseFeatureTable) {
-      _mainFeatureTable = widget.feature.featureTable as GeodatabaseFeatureTable;
+    } else if (widget.feature.featureTable is GeodatabaseFeatureTable) {
+      _mainFeatureTable =
+          widget.feature.featureTable as GeodatabaseFeatureTable;
       relatedTables = _mainFeatureTable?.getRelatedTables();
     }
     _loadAttachments();
@@ -78,7 +80,8 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       });
       for (final attachment in _attachments) {
         final String url = attachment.name; // remote URL to download or view
-        final String contentType = attachment.contentType; // remote URL to download or view
+        final String contentType =
+            attachment.contentType; // remote URL to download or view
         final int id = attachment.id; // remote URL to download or view
         print('Attachment URL: $url');
         print('Attachment contentType: $contentType');
@@ -96,22 +99,38 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
 
   Future<void> _addAttachment() async {
     final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
-        allowMultiple: false);
+      type: FileType.custom,
+      allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
+      allowMultiple: false,
+    );
     if (result != null && result.files.single.path != null) {
-      setState(() => _newAttachments.add(File(result.files.single.path!)));
+      // setState(() => _newAttachments.add(File(result.files.single.path!)));
+      setState(() {
+        _newAttachments.add(File(result.files.single.path!));
+        if (_newAttachments.isNotEmpty || _attachments.isNotEmpty) {
+          showAttachmentError = false;
+        }
+      });
     }
   }
 
   Future<void> _removeNewAttachment(int index) async {
-    setState(() => _newAttachments.removeAt(index));
+    // setState(() => _newAttachments.removeAt(index));
+    setState(() {
+      _newAttachments.removeAt(index);
+      // Show error if no attachments at all (existing + new)
+      showAttachmentError = (_newAttachments.isEmpty && _attachments.isEmpty);
+    });
   }
 
   Future<void> _deleteAttachment(Attachment attachment) async {
     try {
       await widget.feature.deleteAttachment(attachment);
       await _loadAttachments();
+      setState(() {
+        // Update showAttachmentError based on current attachments post-delete
+        showAttachmentError = (_newAttachments.isEmpty && _attachments.isEmpty);
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -122,31 +141,35 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   }
 
   String getFeatureTitle() {
-    final layerName = widget.featureTable.layerInfo?.serviceLayerName ?? 'Feature Layer';
+    final layerName =
+        widget.featureTable.layerInfo?.serviceLayerName ?? 'Feature Layer';
     return layerName;
   }
 
   @override
   Widget build(BuildContext context) {
-    final popupFields = widget.featurePopup.popupDefinition.fields.where((pf) =>
-    (pf.isVisible ?? true));
+    final popupFields = widget.featurePopup.popupDefinition.fields.where(
+      (pf) => (pf.isVisible ?? true),
+    );
     final popupFieldList = popupFields.toList();
 
-    final popupFieldNames = popupFieldList
-        .map((pf) => pf.fieldName.toLowerCase())
-        .toSet();
+    final popupFieldNames =
+        popupFieldList.map((pf) => pf.fieldName.toLowerCase()).toSet();
 
-    final filteredFields = widget.featureTable.fields
-        .where((field) {
-      final fname = field.name.toLowerCase();
-      return popupFieldNames.contains(fname) &&
-          !['objectid', 'globalid', 'shape'].contains(fname);
-    })
-        .toList();
+    final filteredFields =
+        widget.featureTable.fields.where((field) {
+          final fname = field.name.toLowerCase();
+          return popupFieldNames.contains(fname) &&
+              !['objectid', 'globalid', 'shape'].contains(fname);
+        }).toList();
 
     filteredFields.sort((a, b) {
-      final aIndex = popupFieldList.indexWhere((pf) => pf.fieldName.toLowerCase() == a.name.toLowerCase());
-      final bIndex = popupFieldList.indexWhere((pf) => pf.fieldName.toLowerCase() == b.name.toLowerCase());
+      final aIndex = popupFieldList.indexWhere(
+        (pf) => pf.fieldName.toLowerCase() == a.name.toLowerCase(),
+      );
+      final bIndex = popupFieldList.indexWhere(
+        (pf) => pf.fieldName.toLowerCase() == b.name.toLowerCase(),
+      );
       return aIndex.compareTo(bIndex);
     });
 
@@ -166,14 +189,15 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
               children: [
                 Text(
                   getFeatureTitle(),
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
-                ...filteredFields.map((field) => _buildFieldCard(field, popupFieldList)).toList(),
+                ...filteredFields
+                    .map((field) => _buildFieldCard(field, popupFieldList))
+                    .toList(),
                 const SizedBox(height: 18),
                 // Card(
                 //   margin: const EdgeInsets.symmetric(vertical: 5),
@@ -250,6 +274,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                 //     ),
                 //   ),
                 // ),
+                if (widget.featureTable.layerInfo?.serviceLayerName != 'WTP')
                 Card(
                   margin: const EdgeInsets.symmetric(vertical: 5),
                   child: Padding(
@@ -259,9 +284,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                       children: [
                         Text(
                           "Attachments",
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
+                          style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 6),
@@ -271,21 +294,29 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                             padding: const EdgeInsets.only(bottom: 8),
                             child: Row(
                               children: [
-                                const Icon(Icons.error, color: Colors.red, size: 18),
+                                const Icon(
+                                  Icons.error,
+                                  color: Colors.red,
+                                  size: 18,
+                                ),
                                 const SizedBox(width: 8),
                                 const Text(
                                   "Please add at least one attachment",
-                                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
                         if (_attachmentsLoading) ...[
                           const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(8),
-                                child: CircularProgressIndicator(),
-                              )),
+                            child: Padding(
+                              padding: EdgeInsets.all(8),
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
                         ] else ...[
                           Column(
                             children: [
@@ -294,17 +325,25 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                                   dense: true,
                                   contentPadding: EdgeInsets.zero,
                                   leading: const Icon(Icons.attach_file),
-                                  title:
-                                  Text(attachment.name, overflow: TextOverflow.ellipsis),
+                                  title: Text(
+                                    attachment.name,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                   trailing: IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _deleteAttachment(attachment),
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.red,
+                                    ),
+                                    onPressed:
+                                        () => _deleteAttachment(attachment),
                                   ),
                                   onTap: () {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                          content: Text(
-                                              'Open attachment: ${attachment.name}')),
+                                        content: Text(
+                                          'Open attachment: ${attachment.name}',
+                                        ),
+                                      ),
                                     );
                                   },
                                 );
@@ -316,10 +355,15 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                                   dense: true,
                                   contentPadding: EdgeInsets.zero,
                                   leading: const Icon(Icons.insert_drive_file),
-                                  title:
-                                  Text(file.path.split('/').last, overflow: TextOverflow.ellipsis),
+                                  title: Text(
+                                    file.path.split('/').last,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                   trailing: IconButton(
-                                    icon: const Icon(Icons.remove_circle, color: Colors.red),
+                                    icon: const Icon(
+                                      Icons.remove_circle,
+                                      color: Colors.red,
+                                    ),
                                     onPressed: () => _removeNewAttachment(idx),
                                   ),
                                 );
@@ -332,7 +376,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                                   label: const Text('Add Attachment'),
                                   onPressed: _addAttachment,
                                 ),
-                              )
+                              ),
                             ],
                           ),
                         ],
@@ -341,7 +385,8 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                   ),
                 ),
                 const SizedBox(height: 18),
-                ElevatedButton.icon(
+                if (widget.featureTable.layerInfo?.serviceLayerName != 'WTP')
+                  ElevatedButton.icon(
                   icon: const Icon(Icons.table_chart),
                   label: const Text('Show Related Features'),
                   onPressed: _showRelatedFeaturesDialog,
@@ -355,19 +400,20 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                 Column(
                   children: [
                     ElevatedButton.icon(
-                      icon: Icon(Icons.save),
-                      label: Text('Save Changes'),
-                      onPressed: isSaving ? null : _saveAttributes,
+                      icon: const Icon(Icons.save),
+                      label: const Text('Save Changes'),
+                      onPressed:
+                          (isSaving || showAttachmentError)
+                              ? null
+                              : _saveAttributes,
                       style: ElevatedButton.styleFrom(
-                        minimumSize: Size(double.infinity, 48),
+                        minimumSize: const Size(double.infinity, 48),
                       ),
                     ),
-                    if (isSaving)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16),
-                        child: Center(
-                          child: CircularProgressIndicator(),
-                        ),
+                    if (isSaving && !showAttachmentError)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 16),
+                        child: Center(child: CircularProgressIndicator()),
                       ),
                   ],
                 ),
@@ -393,36 +439,46 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
 
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Related Features'),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 400, // fixed height for scrolling table
-            child: _relatedFeaturesLoading
-                ? const Center(child: CircularProgressIndicator())
-                : RelatedFeaturesTable(
-              relatedFeatures: _relatedFeatures,
-              relatedFeatureTable: relatedTables!.first,
-              refreshParent: () async {
-                // Refresh list after CRUD
-                final freshRelated = await getRelatedFeatures(widget.feature);
-                setState(() {
-                  debugPrint("refreshParent ${_relatedFeatures.length}");
-                  debugPrint("refreshParent freshRelated ${freshRelated.length}");
-                  _relatedFeatures = freshRelated;
-                  debugPrint("refreshParent ${_relatedFeatures.length}");
-                });
-              },
-              feature: widget.feature,
+        builder:
+            (context) => AlertDialog(
+              title: const Text('Related Features'),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 400, // fixed height for scrolling table
+                child:
+                    _relatedFeaturesLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : RelatedFeaturesTable(
+                          relatedFeatures: _relatedFeatures,
+                          relatedFeatureTable: relatedTables!.first,
+                          refreshParent: () async {
+                            // Refresh list after CRUD
+                            final freshRelated = await getRelatedFeatures(
+                              widget.feature,
+                            );
+                            setState(() {
+                              debugPrint(
+                                "refreshParent ${_relatedFeatures.length}",
+                              );
+                              debugPrint(
+                                "refreshParent freshRelated ${freshRelated.length}",
+                              );
+                              _relatedFeatures = freshRelated;
+                              debugPrint(
+                                "refreshParent ${_relatedFeatures.length}",
+                              );
+                            });
+                          },
+                          feature: widget.feature,
+                        ),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text('Close'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
             ),
-          ),
-          actions: [
-            TextButton(
-              child: const Text('Close'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
-        ),
       );
     } catch (e) {
       setState(() {
@@ -482,24 +538,25 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
               border: const OutlineInputBorder(),
               isDense: true,
             ),
-            items: codedValues.map((cv) {
-              return DropdownMenuItem<String>(
-                value: cv.code.toString(),
-                child: Text(cv.name),
-              );
-            }).toList(),
-            onChanged: shouldBeEditable
-                ? (String? newValue) {
-              debugPrint("field.name ${field.name}");
-              if(field.name == "intpprogress")
-              {
-                  initProgress = int.tryParse(newValue!) ?? 0;
-              }
-              setState(() {
-                _editedAttributes[field.name] = newValue;
-              });
-            }
-                : null,
+            items:
+                codedValues.map((cv) {
+                  return DropdownMenuItem<String>(
+                    value: cv.code.toString(),
+                    child: Text(cv.name),
+                  );
+                }).toList(),
+            onChanged:
+                shouldBeEditable
+                    ? (String? newValue) {
+                      debugPrint("field.name ${field.name}");
+                      if (field.name == "intpprogress") {
+                        initProgress = int.tryParse(newValue!) ?? 0;
+                      }
+                      setState(() {
+                        _editedAttributes[field.name] = newValue;
+                      });
+                    }
+                    : null,
             validator: (val) {
               if (!field.nullable && (val == null || val.isEmpty)) {
                 return '$label is required';
@@ -554,7 +611,9 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
             },
             child: AbsorbPointer(
               child: TextFormField(
-                controller: TextEditingController(text: formatDate(_editedAttributes[field.name])),
+                controller: TextEditingController(
+                  text: formatDate(_editedAttributes[field.name]),
+                ),
                 decoration: InputDecoration(
                   labelText: label,
                   border: const OutlineInputBorder(),
@@ -594,22 +653,28 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                 initialValue: value?.toString() ?? '',
                 enabled: shouldBeEditable,
                 readOnly: !shouldBeEditable,
-                style: shouldBeEditable
-                    ? null
-                    : TextStyle(
-                  color: Colors.grey[800],
-                  fontStyle: FontStyle.italic,
-                  fontWeight: FontWeight.w500,
-                ),
+                style:
+                    shouldBeEditable
+                        ? null
+                        : TextStyle(
+                          color: Colors.grey[800],
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w500,
+                        ),
                 decoration: InputDecoration(
                   labelText: label + (shouldBeEditable ? '' : ' (Read Only)'),
-                  labelStyle: TextStyle(color: shouldBeEditable ? null : Colors.grey[700]),
+                  labelStyle: TextStyle(
+                    color: shouldBeEditable ? null : Colors.grey[700],
+                  ),
                   border: const OutlineInputBorder(),
                   filled: !shouldBeEditable,
                   fillColor: readOnlyColor,
                   isDense: true,
                 ),
-                onSaved: shouldBeEditable ? (val) => _editedAttributes[field.name] = val : null,
+                onSaved:
+                    shouldBeEditable
+                        ? (val) => _editedAttributes[field.name] = val
+                        : null,
                 validator: (val) {
                   if (!field.nullable && (val == null || val.isEmpty)) {
                     return '$label is required';
@@ -631,10 +696,13 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     setState(() {
       isSaving = true;
     });
-    debugPrint("_saveAttributes1 _attachments.isEmpty ${_attachments.isEmpty} _newAttachments.isEmpty ${_newAttachments.isEmpty}");
-    if (_attachments.isEmpty && _newAttachments.isEmpty) {
+    debugPrint(
+      "_saveAttributes1 _attachments.isEmpty ${_attachments.isEmpty} _newAttachments.isEmpty ${_newAttachments.isEmpty}",
+    );
+    if (_attachments.isEmpty && _newAttachments.isEmpty && widget.featureTable.layerInfo?.serviceLayerName != 'WTP') {
       setState(() {
         showAttachmentError = true;
+        isSaving = false;
       });
       debugPrint("_saveAttributes Please add at least one attachment");
       return;
@@ -705,68 +773,84 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     }
 
     try {
-      for (final file in _newAttachments) {
-        final ext = path.extension(file.path).toLowerCase(); // Using path package
-        final bytes = await file.readAsBytes();
-        final name = file.path.split('/').last;
-        debugPrint('File extension: $ext');
-        bool attachmentsEnabled = widget.featureTable.hasAttachments ?? false;
-        debugPrint("attachmentsEnabled $attachmentsEnabled");
-        await widget.feature.addAttachment(
-          name: name,
-          contentType: _mimeTypeForExtension(ext), // optionally map to mime type
-          data: bytes,
-        );
-      }
       bool attachmentsEnabled = widget.featureTable.hasAttachments ?? false;
       debugPrint("1attachmentsEnabled $attachmentsEnabled");
+      if (attachmentsEnabled) {
+        for (final file in _newAttachments) {
+          final ext =
+          path.extension(file.path).toLowerCase(); // Using path package
+          final bytes = await file.readAsBytes();
+          final name = file.path
+              .split('/')
+              .last;
+          debugPrint('File extension: $ext');
+          bool attachmentsEnabled = widget.featureTable.hasAttachments ?? false;
+          debugPrint("attachmentsEnabled $attachmentsEnabled");
+          await widget.feature.addAttachment(
+            name: name,
+            contentType: _mimeTypeForExtension(ext),
+            // optionally map to mime type
+            data: bytes,
+          );
+        }
+      }
+
       await _applyEdits(widget.feature);
       debugPrint("_applyEdits Done");
 
       // add first records on related table
-      ArcGISFeatureTable arcGISFeatureTable = relatedTables!.first;
-      await arcGISFeatureTable.load();
-      debugPrint("arcGISFeatureTable.numberOfFeatures ${arcGISFeatureTable.numberOfFeatures}");
-      final relatedFeatures = await getRelatedFeatures(widget.feature);
-      debugPrint("relatedFeatures $relatedFeatures");
-      if(relatedFeatures.isEmpty)
+      if (widget.featureTable.layerInfo?.serviceLayerName != 'WTP')
       {
-        final DateTime defaultDate = DateTime.now();
-        Map<String, dynamic> newAttributes = {
-          'GUID': widget.feature.attributes['globalid'], // link to parent
-          'intpprogress': initProgress,
-          'surveyordate': defaultDate,// example physical progress code
-          // other necessary attributes
-        };
-        final newFeature = arcGISFeatureTable.createFeature(attributes: newAttributes) as ArcGISFeature;
-        await arcGISFeatureTable.addFeature(newFeature);
-        debugPrint("applyEdits applyEdits2");
-        for (final file in _newAttachments) {
-          final ext = path.extension(file.path).toLowerCase(); // Using path package
-          final bytes = await file.readAsBytes();
-          final name = file.path.split('/').last;
-          debugPrint('File extension: $ext');
-          bool attachmentsEnabled = arcGISFeatureTable.hasAttachments ?? false;
-          debugPrint("attachmentsEnabled $attachmentsEnabled");
-          await newFeature.addAttachment(
-            name: name,
-            contentType: _mimeTypeForExtension(ext), // optionally map to mime type
-            data: bytes,
+        ArcGISFeatureTable arcGISFeatureTable = relatedTables!.first;
+        await arcGISFeatureTable.load();
+        debugPrint(
+          "arcGISFeatureTable.numberOfFeatures ${arcGISFeatureTable.numberOfFeatures}",
+        );
+        final relatedFeatures = await getRelatedFeatures(widget.feature);
+        debugPrint("relatedFeatures $relatedFeatures");
+        if (relatedFeatures.isEmpty) {
+          final DateTime defaultDate = DateTime.now();
+          Map<String, dynamic> newAttributes = {
+            'GUID': widget.feature.attributes['globalid'], // link to parent
+            'intpprogress': initProgress,
+            'surveyordate': defaultDate, // example physical progress code
+            // other necessary attributes
+          };
+          final newFeature =
+          arcGISFeatureTable.createFeature(attributes: newAttributes)
+          as ArcGISFeature;
+          await arcGISFeatureTable.addFeature(newFeature);
+          debugPrint("applyEdits applyEdits2");
+          for (final file in _newAttachments) {
+            final ext =
+            path.extension(file.path).toLowerCase(); // Using path package
+            final bytes = await file.readAsBytes();
+            final name = file.path.split('/').last;
+            debugPrint('File extension: $ext');
+            bool attachmentsEnabled = arcGISFeatureTable.hasAttachments ?? false;
+            debugPrint("attachmentsEnabled $attachmentsEnabled");
+            await newFeature.addAttachment(
+              name: name,
+              contentType: _mimeTypeForExtension(ext),
+              // optionally map to mime type
+              data: bytes,
+            );
+          }
+          await _applyEdits(newFeature);
+          debugPrint(
+            "arcGISFeatureTable.numberOfFeatures ${arcGISFeatureTable.numberOfFeatures}",
           );
         }
-        await _applyEdits(newFeature);
-        debugPrint("arcGISFeatureTable.numberOfFeatures ${arcGISFeatureTable.numberOfFeatures}");
       }
       widget.onFormSaved();
     } catch (e) {
       if (mounted) {
         debugPrint("Error $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Update failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Update failed: $e')));
       }
-    }
-    finally {
+    } finally {
       if (mounted) {
         setState(() {
           isSaving = false;
@@ -796,7 +880,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     return Future.value();
   }
 
-
   String _mimeTypeForExtension(String ext) {
     switch (ext) {
       case '.jpg':
@@ -810,11 +893,15 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         return 'application/octet-stream';
     }
   }
+
   List<ArcGISFeatureTable>? relatedTables;
+
   Future<List<Feature>> getRelatedFeatures(ArcGISFeature feature) async {
     debugPrint("getRelatedFeatures");
     if (_mainFeatureTable == null) return [];
-    final relatedResults = await _mainFeatureTable!.queryRelatedFeatures(feature: feature);
+    final relatedResults = await _mainFeatureTable!.queryRelatedFeatures(
+      feature: feature,
+    );
     debugPrint("1getRelatedFeatures");
     relatedTables = _mainFeatureTable?.getRelatedTables();
     debugPrint("relatedTables; ${relatedTables?.length}");
@@ -837,10 +924,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     }
     return allRelatedFeatures;
   }
-
-
-
-
 }
 
 // class RelatedFeaturesTable extends StatefulWidget {
@@ -865,30 +948,22 @@ class RelatedFeaturesTable extends StatefulWidget {
 class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
   late List<Feature> features;
   late var maxPrevProgress;
-  final _formKey = GlobalKey<FormState>();
-  final Map<String, dynamic> _newFeatureAttributes = {};
-  // late ServiceFeatureTable _relatedFeatureTable;
+
   @override
   void initState() {
     super.initState();
     features = List.from(widget.relatedFeatures);
-    debugPrint("features ${features.length}");
-    // final relatedFeatures = widget.relatedFeatureTable.features;
 
-// Extract all intpprogress values
-    final progressValues = features.map((feature) {
-      debugPrint("feature ${feature.attributes}");
-      final rawValue = feature.attributes['intpprogress'];
-      return (rawValue != null) ? rawValue as int : 0;
-    }).toList();
+    final progressValues =
+        features.map((feature) {
+          final rawValue = feature.attributes['intpprogress'];
+          return (rawValue != null) ? rawValue as int : 0;
+        }).toList();
 
-// Find maximum, or default to 0 if list is empty
-    maxPrevProgress = progressValues.isNotEmpty
-        ? progressValues.reduce((a, b) => a > b ? a : b)
-        : 0;
-
-    debugPrint("maxPrevProgress $maxPrevProgress");
-
+    maxPrevProgress =
+        progressValues.isNotEmpty
+            ? progressValues.reduce((a, b) => a > b ? a : b)
+            : 0;
   }
 
   @override
@@ -898,11 +973,11 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
         children: [
           const Text('No related features found.'),
           ElevatedButton(
-          onPressed: () {
-          _showCreateFeatureDialog(maxPrevProgress);
-          },
+            onPressed: () {
+              _showCreateFeatureDialog(maxPrevProgress);
+            },
             child: const Text('Add Related Feature'),
-          )
+          ),
         ],
       );
     }
@@ -915,124 +990,62 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
           scrollDirection: Axis.horizontal,
           child: DataTable(
             columns: [
-              ...fields.map((field) => DataColumn(label: Text(field.alias ?? field.name))),
-              const DataColumn(label: Text('Actions')),
+              ...fields.map(
+                (field) => DataColumn(label: Text(field.alias ?? field.name)),
+              ),
+              // No Actions column
             ],
-            rows: features.map((feature) {
-              return DataRow(cells: [
-                ...fields.map((field) {
-                  final value = feature.attributes[field.name];
-                  return DataCell(
-                    Text(value?.toString() ?? ''),
-                    showEditIcon: true,
-                    onTap: () async {
-                      final newValue = await showDialog<String>(
-                        context: context,
-                        builder: (context) {
-                          String editedValue = value?.toString() ?? '';
-                          return AlertDialog(
-                            title: Text('Edit ${field.alias ?? field.name}'),
-                            content: TextFormField(
-                              initialValue: editedValue,
-                              onChanged: (val) => editedValue = val,
-                            ),
-                            actions: [
-                              TextButton(
-                                child: const Text('Cancel'),
-                                onPressed: () => Navigator.of(context).pop(),
-                              ),
-                              ElevatedButton(
-                                child: const Text('Save'),
-                                onPressed: () => Navigator.of(context).pop(editedValue),
-                              )
-                            ],
-                          );
-                        },
-                      );
-                      if (newValue != null && newValue != value?.toString()) {
-                        debugPrint("field.name ${field.name}");
-                        setState(() {
-                          feature.attributes[field.name] = newValue;
-                        });
-                        await _updateFeature(feature);
-                      }
-                    },
+            rows:
+                features.map((feature) {
+                  return DataRow(
+                    cells: [
+                      ...fields.map((field) {
+                        final value = feature.attributes[field.name];
+                        return DataCell(
+                          Text(value?.toString() ?? ''),
+                          // No editing or deletion enabled
+                        );
+                      }).toList(),
+                      // No delete action cell
+                    ],
                   );
                 }).toList(),
-                DataCell(
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _deleteFeature(feature),
-                  ),
-                ),
-              ]);
-            }).toList(),
           ),
         ),
         ElevatedButton(
-        onPressed: () {
-    _showCreateFeatureDialog(maxPrevProgress);
-    },
+          onPressed: () {
+            _showCreateFeatureDialog(maxPrevProgress);
+          },
           child: const Text('Add Related Feature'),
         ),
       ],
     );
   }
-  Future<void> _deleteFeature(Feature feature) async {
-    try {
-      await widget.relatedFeatureTable.deleteFeature(feature);
-      if (widget.relatedFeatureTable is ServiceFeatureTable) {
-        final serviceFeatureTable = widget.relatedFeatureTable as ServiceFeatureTable;
-        await serviceFeatureTable.serviceGeodatabase!.applyEdits();
-      }
-      setState(() {
-        features.remove(feature);
-      });
-      widget.refreshParent();
-    } catch (e) {
-      debugPrint("_deleteFeature $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $e')),
-      );
-    }
-  }
-
-  Future<void> _updateFeature(Feature feature) async {
-    try {
-      await widget.relatedFeatureTable.updateFeature(feature);
-      if (widget.relatedFeatureTable is ServiceFeatureTable) {
-        final serviceFeatureTable = widget.relatedFeatureTable as ServiceFeatureTable;
-        await serviceFeatureTable.serviceGeodatabase!.applyEdits();
-      }
-      widget.refreshParent();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Update failed: $e')),
-      );
-    }
-  }
 
   void _showCreateFeatureDialog(int maxPrevProgress) {
     final intpProgressField = widget.relatedFeatureTable.fields.firstWhere(
-          (f) => f.name.toLowerCase() == 'intpprogress',
+      (f) => f.name.toLowerCase() == 'intpprogress',
       orElse: () => throw Exception('intpprogress field not found'),
     );
 
-    final List<dynamic> codedValuesJson = intpProgressField.domain?.toJson()['codedValues'] ?? [];
-    final List<Map<String, dynamic>> codedValues = codedValuesJson.map((cv) {
-      return {'code': cv['code'], 'name': cv['name']};
-    }).toList();
+    final List<dynamic> codedValuesJson =
+        intpProgressField.domain?.toJson()['codedValues'] ?? [];
+    final List<Map<String, dynamic>> codedValues =
+        codedValuesJson.map((cv) {
+          return {'code': cv['code'], 'name': cv['name']};
+        }).toList();
 
     int? selectedCode;
     List<PlatformFile> attachedFiles = [];
     final DateTime defaultDate = DateTime.now();
     final _formKey = GlobalKey<FormState>();
+    String? attachmentError;
 
-    bool isLoading = false; // Loading indicator state
+    bool isLoading = false;
 
     showDialog(
       context: context,
-      barrierDismissible: false, // Prevent dismissal while loading
+      barrierDismissible: false,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
@@ -1045,6 +1058,7 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
               if (result != null) {
                 setState(() {
                   attachedFiles.addAll(result.files);
+                  attachmentError = null; // Clear error if files added
                 });
               }
             }
@@ -1052,6 +1066,11 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
             void removeAttachment(int index) {
               setState(() {
                 attachedFiles.removeAt(index);
+                if (attachedFiles.isEmpty) {
+                  attachmentError = 'Please add at least one attachment';
+                } else {
+                  attachmentError = null;
+                }
               });
             }
 
@@ -1073,6 +1092,18 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
 
             Future<void> createFeatureWithAttachments() async {
               if (!_formKey.currentState!.validate()) return;
+
+              if (attachedFiles.isEmpty) {
+                setState(() {
+                  attachmentError = 'Please add at least one attachment';
+                });
+                return;
+              } else {
+                setState(() {
+                  attachmentError = null;
+                });
+              }
+
               _formKey.currentState!.save();
 
               setState(() {
@@ -1087,7 +1118,10 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
 
               try {
                 final newFeature =
-                widget.relatedFeatureTable.createFeature(attributes: newAttributes) as ArcGISFeature;
+                    widget.relatedFeatureTable.createFeature(
+                          attributes: newAttributes,
+                        )
+                        as ArcGISFeature;
                 await widget.relatedFeatureTable.addFeature(newFeature);
 
                 for (final attachedFile in attachedFiles) {
@@ -1102,32 +1136,27 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                   );
                 }
 
-                // if (widget.relatedFeatureTable is ServiceFeatureTable) {
-                //   await (widget.relatedFeatureTable as ServiceFeatureTable).updateFeature(newFeature);
-                //   final applyEditsResult =
-                //   await (widget.relatedFeatureTable as ServiceFeatureTable).applyEdits();
-                //   if (applyEditsResult.isEmpty) {
-                //     throw Exception('ApplyEdits returned no results, attachment may not be added');
-                //   }
-                // }
                 if (widget.relatedFeatureTable is ServiceFeatureTable) {
-                  // Online or offline service geodatabase case
-                  final serviceFeatureTable = widget.relatedFeatureTable as ServiceFeatureTable;
+                  final serviceFeatureTable =
+                      widget.relatedFeatureTable as ServiceFeatureTable;
                   await serviceFeatureTable.updateFeature(newFeature);
-                  final applyEditsResult = await serviceFeatureTable.applyEdits();
+                  final applyEditsResult =
+                      await serviceFeatureTable.applyEdits();
                   if (applyEditsResult.isEmpty) {
-                    throw Exception('ApplyEdits returned no results, attachment may not be added');
+                    throw Exception(
+                      'ApplyEdits returned no results, attachment may not be added',
+                    );
                   }
-                } else if (widget.relatedFeatureTable is GeodatabaseFeatureTable) {
-                  // Offline local geodatabase case
-                  final geodatabaseFeatureTable = widget.relatedFeatureTable as GeodatabaseFeatureTable;
+                } else if (widget.relatedFeatureTable
+                    is GeodatabaseFeatureTable) {
+                  final geodatabaseFeatureTable =
+                      widget.relatedFeatureTable as GeodatabaseFeatureTable;
                   await geodatabaseFeatureTable.updateFeature(newFeature);
-                  // No applyEdits() call needed for GeodatabaseFeatureTable offline mode,
-                  // changes are saved immediately.
                 } else {
-                  throw Exception('Unsupported feature table type for updating features');
+                  throw Exception(
+                    'Unsupported feature table type for updating features',
+                  );
                 }
-
 
                 setState(() {
                   attachedFiles.clear();
@@ -1136,12 +1165,12 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
 
                 widget.refreshParent();
 
-                Navigator.of(context).pop(); // Close dialog on success
+                Navigator.of(context).pop();
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Create failed: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Create failed: $e')));
                 }
               } finally {
                 if (mounted) {
@@ -1160,17 +1189,23 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                     SingleChildScrollView(
                       padding: const EdgeInsets.all(16),
                       child: AbsorbPointer(
-                        absorbing: isLoading, // Disable form when loading
+                        absorbing: isLoading,
                         child: Form(
                           key: _formKey,
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('Add Progress Entry', style: Theme.of(context).textTheme.headlineSmall),
+                              Text(
+                                'Add Progress Entry',
+                                style:
+                                    Theme.of(context).textTheme.headlineSmall,
+                              ),
                               const SizedBox(height: 16),
                               TextFormField(
                                 readOnly: true,
-                                initialValue: DateFormat('yyyy-MM-dd').format(defaultDate),
+                                initialValue: DateFormat(
+                                  'yyyy-MM-dd',
+                                ).format(defaultDate),
                                 decoration: const InputDecoration(
                                   labelText: 'Survey Date',
                                   border: OutlineInputBorder(),
@@ -1183,13 +1218,15 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                                   border: OutlineInputBorder(),
                                 ),
                                 value: selectedCode,
-                                items: codedValues.map((cv) {
-                                  return DropdownMenuItem<int>(
-                                    value: cv['code'],
-                                    child: Text(cv['name']),
-                                  );
-                                }).toList(),
-                                onChanged: (val) => setState(() => selectedCode = val),
+                                items:
+                                    codedValues.map((cv) {
+                                      return DropdownMenuItem<int>(
+                                        value: cv['code'],
+                                        child: Text(cv['name']),
+                                      );
+                                    }).toList(),
+                                onChanged:
+                                    (val) => setState(() => selectedCode = val),
                                 validator: (val) {
                                   if (val == null) {
                                     return 'Please select a physical progress status';
@@ -1201,22 +1238,29 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                                 },
                               ),
                               const SizedBox(height: 16),
-
                               if (attachedFiles.isNotEmpty) ...[
                                 SizedBox(
                                   height: 150,
                                   child: ListView.builder(
                                     shrinkWrap: true,
-                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    physics:
+                                        const AlwaysScrollableScrollPhysics(),
                                     itemCount: attachedFiles.length,
                                     itemBuilder: (context, index) {
                                       final file = attachedFiles[index];
                                       return ListTile(
                                         dense: true,
-                                        title: Text(file.name, overflow: TextOverflow.ellipsis),
+                                        title: Text(
+                                          file.name,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                         trailing: IconButton(
-                                          icon: const Icon(Icons.remove_circle, color: Colors.red),
-                                          onPressed: () => removeAttachment(index),
+                                          icon: const Icon(
+                                            Icons.remove_circle,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed:
+                                              () => removeAttachment(index),
                                         ),
                                       );
                                     },
@@ -1224,27 +1268,38 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                                 ),
                                 const SizedBox(height: 16),
                               ],
-
+                              if (attachmentError != null) ...[
+                                Text(
+                                  attachmentError!,
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
                               ElevatedButton.icon(
                                 icon: const Icon(Icons.attach_file),
                                 label: const Text('Add Attachments'),
                                 onPressed: pickAttachments,
                               ),
-
                               const SizedBox(height: 24),
-
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   TextButton(
                                     onPressed: () {
-                                      if (!isLoading) Navigator.of(context).pop();
+                                      if (!isLoading)
+                                        Navigator.of(context).pop();
                                     },
                                     child: const Text('Cancel'),
                                   ),
                                   const SizedBox(width: 16),
                                   ElevatedButton(
-                                    onPressed: isLoading ? null : createFeatureWithAttachments,
+                                    onPressed:
+                                        isLoading
+                                            ? null
+                                            : createFeatureWithAttachments,
                                     child: const Text('Create'),
                                   ),
                                 ],
@@ -1254,7 +1309,6 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                         ),
                       ),
                     ),
-
                     if (isLoading)
                       Positioned.fill(
                         child: Container(
