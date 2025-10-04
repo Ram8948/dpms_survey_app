@@ -223,6 +223,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
 
   Future<void> onTap(Offset localPosition) async {
     // Perform an identify operation on the graphics overlay at the tapped location.
+    debugPrint("onTap ${_selectedLayer!.name}");
     final identifyResult = await _mapViewController.identifyGraphicsOverlay(
       _graphicsOverlay,
       screenPoint: localPosition,
@@ -314,6 +315,22 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
     // Reset the selected geometry type to null.
     setState(() => _selectedGeometryType = null);
   }
+  final List<String> wtpLayerNames = [
+    'Aeration Fountain',
+    'Clariflocculator',
+    'Rapid Sand Filter and Filter House',
+    'Admin Block and Labortary Items',
+    'Wash Water Tank',
+    'Bypass Arrangement',
+    'Pure Water Sump and Pump House',
+    'Channel in Meter',
+    'Drainage Arrangement',
+  ];
+
+  bool isLayerPresent(String layerName) {
+    return wtpLayerNames.contains(layerName);
+  }
+
 
   Future<void> createFeature(Geometry? geometry) async {
     // Disable the UI while the async operations are in progress.
@@ -326,32 +343,40 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
       // final geometry = _mapViewController.screenToLocation(
       //     screen: localPosition);
       // final geometry = _geometryEditor.geometry;
+
       if (geometry != null) {
         final normalizedGeometry = GeometryEngine.normalizeCentralMeridian(
           geometry,
         );
         feature?.geometry = normalizedGeometry;
 
-        // // Set feature attributes.
-        // feature.attributes['typdamage'] = 'Minor';
-        // feature.attributes['primcause'] = 'Earthquake';
-
         // Add the feature to the local table.
         await _selectedtable!.addFeature(feature!);
-
-        // // Apply the edits to the service on the service geodatabase.
-        // if(_selectedtable is ServiceFeatureTable)
-        // {
-        //   await (_selectedtable as ServiceFeatureTable).serviceGeodatabase!.applyEdits();
-        // }
-        // else if(_selectedtable is GeodatabaseFeatureTable)
-        // {
-        //   await (_selectedtable as GeodatabaseFeatureTable).geodatabase!.applyEdits();
-        // }
 
         // Update the feature to get the updated objectid - a temporary ID is used before the feature is added.
         feature.refresh();
         debugPrint("Attribute keys: ${feature.attributes.keys.toList()}");
+        debugPrint("_selectedLayer!.name: ${_selectedLayer!.name}");
+        if(isLayerPresent(_selectedLayer!.name.trim()))
+        {
+           Feature? interceptedFeature = await checkFeatureInterceptWTP(feature.geometry);
+           if(interceptedFeature!=null)
+           {
+              if(! await processNewFeature(interceptedFeature, feature))
+              {
+                  return;
+              }
+           }
+           else
+           {
+             showMessageDialog('This feature can not be draw outside the WTP Layer');
+             return;
+           }
+        }
+        else
+        {
+          debugPrint("Not LayerPresent ${_selectedLayer!.name}");
+        }
         final attributes = await getSchemeNameFromExtent(feature.geometry);
         if(attributes!=null)
         {
@@ -368,26 +393,6 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
         }
         // Confirm feature addition.
         showMessageDialog('Created feature ${feature.attributes['objectid']}');
-        // openAttributeEditForm(feature as ArcGISFeature,_selectedLayer!);
-        // final List<Popup> popups = identifyResults
-        //     .where((result) => result.popups.isNotEmpty)
-        //     .expand((result) => result.popups)
-        //     .toList();
-        // Popup featurePopup = popups.first;
-        // debugPrint("featurePopup.title ${featurePopup.title}");
-        // debugPrint("featurePopup.popupDefinition.title ${featurePopup.popupDefinition.title}");
-        // for (var field in featurePopup.popupDefinition.fields) {
-        //   // if ((field.isVisible ?? true)) {
-        //   debugPrint('Editable & Visible PopupField:');
-        //   debugPrint('  fieldName: ${field.fieldName}');
-        //   debugPrint('  label: ${field.label}');
-        //   debugPrint('  visible: ${field.isVisible}');
-        //   debugPrint('  editable: ${field.isEditable}');
-        //   debugPrint('  type: ${field.runtimeType}');
-        //   debugPrint('  type: ${field.tooltip}');
-        //   debugPrint('  type: ${field.stringFieldOption}');
-        //   // }
-        // }
         Popup? featurePopup;
 
 // Assuming: you have ArcGISFeature 'feature' and FeatureLayer '_selectedLayer'
@@ -407,14 +412,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
           Navigator.pop(context, sourceViewpoint);
           Navigator.pop(context, sourceViewpoint);
 
-          // Future.delayed(Duration(seconds: 4), () {
-          //   if (!mounted) return; // Ensure widget is still mounted
-          //   Navigator.pop(context, sourceViewpoint);
-          //   debugPrint("showFeatureActionPopup sourceViewpoint $sourceViewpoint");
-          // });
-
-        });
-        // Navigator.pop(context, sourceViewpoint);
+        },schemeList);
       } else {
         showMessageDialog('Error creating feature, geometry was null.');
       }
@@ -436,80 +434,69 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
 
   Widget buildBottomMenu() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        // A drop down button for selecting geometry type.
-        // DropdownButton(
-        //   alignment: Alignment.center,
-        //   hint: Text(
-        //     'Geometry Type',
-        //     style: Theme.of(context).textTheme.labelMedium,
-        //   ),
-        //   icon: const Icon(Icons.arrow_drop_down),
-        //   iconEnabledColor: Theme.of(context).primaryColor,
-        //   iconDisabledColor: Theme.of(context).disabledColor,
-        //   style: Theme.of(context).textTheme.labelMedium,
-        //   value: _selectedGeometryType,
-        //   items: _geometryTypeMenuItems,
-        //   // If the geometry editor is already started then we fully disable the DropDownButton and prevent editing with another geometry type.
-        //   onChanged:
-        //   !_geometryEditorIsStarted
-        //       ? (GeometryType? geometryType) {
-        //     if (geometryType != null) {
-        //       startEditingWithGeometryType(geometryType);
-        //     }
-        //   }
-        //       : null,
-        // ),
-        DropdownButton<FeatureLayer>(
-          alignment: Alignment.center,
-          hint: Text(
-            'Select Layer',
+        Expanded(
+          child: DropdownButton<FeatureLayer>(
+            isExpanded: true,
+            alignment: Alignment.center,
+            hint: Text(
+              'Select Layer',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+            icon: const Icon(Icons.arrow_drop_down),
+            iconEnabledColor: Theme.of(context).primaryColor,
+            iconDisabledColor: Theme.of(context).disabledColor,
             style: Theme.of(context).textTheme.labelMedium,
-          ),
-          icon: const Icon(Icons.arrow_drop_down),
-          iconEnabledColor: Theme.of(context).primaryColor,
-          iconDisabledColor: Theme.of(context).disabledColor,
-          style: Theme.of(context).textTheme.labelMedium,
-          value: _selectedLayer,
-          items: _layerMenuItems,
-          onChanged: !_geometryEditorIsStarted
-              ? (layer) async {
-            setState(() => _selectedLayer = layer);
-            await layer?.load();
-            _selectedtable = layer?.featureTable as ArcGISFeatureTable?;
-            setState(() {
-              _selectedGeometryType = layer?.featureTable?.geometryType;
-              if (_selectedGeometryType != null) {
-                startEditingWithGeometryType(_selectedGeometryType!);
-              }
-            });
-          }
-              : null,
-        ),
-        // A drop down button for selecting a tool.
-        DropdownButton(
-          alignment: Alignment.center,
-          hint: Text('Tool', style: Theme.of(context).textTheme.labelMedium),
-          iconEnabledColor: Theme.of(context).colorScheme.primary,
-          style: Theme.of(context).textTheme.labelMedium,
-          value: _selectedTool,
-          items: _toolMenuItems,
-          onChanged: (tool) {
-            if (tool != null) {
-              setState(() => _selectedTool = tool);
-              _geometryEditor.tool = tool;
+            value: _selectedLayer,
+            items: _layerMenuItems,
+            onChanged: !_geometryEditorIsStarted
+                ? (layer) async {
+              setState(() => _selectedLayer = layer);
+              await layer?.load();
+              _selectedtable =
+              layer?.featureTable as ArcGISFeatureTable?;
+              setState(() {
+                _selectedGeometryType =
+                    layer?.featureTable?.geometryType;
+                if (_selectedGeometryType != null) {
+                  startEditingWithGeometryType(_selectedGeometryType!);
+                }
+              });
             }
-          },
+                : null,
+            isDense: true,
+          ),
         ),
-        // A button to toggle the visibility of the editing toolbar.
+        Expanded(
+          child: DropdownButton(
+            isExpanded: true,
+            alignment: Alignment.center,
+            hint: Text(
+              'Tool',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+            iconEnabledColor: Theme.of(context).colorScheme.primary,
+            style: Theme.of(context).textTheme.labelMedium,
+            value: _selectedTool,
+            items: _toolMenuItems,
+            onChanged: (tool) {
+              if (tool != null) {
+                setState(() => _selectedTool = tool);
+                _geometryEditor.tool = tool;
+              }
+            },
+            isDense: true,
+          ),
+        ),
         IconButton(
-          onPressed: () => setState(() => _showEditToolbar = !_showEditToolbar),
+          onPressed: () =>
+              setState(() => _showEditToolbar = !_showEditToolbar),
           icon: const Icon(Icons.edit),
         ),
       ],
     );
   }
+
 
   Widget buildEditingToolbar() {
     // A toolbar of buttons with icons for editing functions. Tooltips are used to aid the user experience.
@@ -835,9 +822,163 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
     ];
   }
 
+  FeatureSubtype? getSubtype(Feature newFeature) {
+    // Get the feature table
+    final featureTable = newFeature.featureTable;
+
+    if (featureTable is ArcGISFeatureTable) {
+      // Get the field name used for subtype
+      final subtypeField = featureTable.subtypeField;
+
+      if (subtypeField != null && subtypeField.isNotEmpty) {
+        // Get the subtype code from the feature's attributes
+        final subtypeCode = newFeature.attributes[subtypeField];
+
+        // Get the Subtype from the table definition
+        try {
+          return featureTable.featureSubtypes.firstWhere((s) => s.code == subtypeCode);
+        } catch (e) {
+          return null;
+        }
+      }
+    }
+  }
+
+  Future<List<String>> findIntersectingLayers(
+      Feature feature, ArcGISMap map) async {
+    final geometry = feature.geometry;
+    if (geometry == null) return [];
+
+    final List<String> layerNames = [];
+
+    for (final layer in map.operationalLayers) {
+      if (layer is FeatureLayer) {
+        final queryParams = QueryParameters()
+          ..geometry = geometry
+          ..spatialRelationship = SpatialRelationship.intersects;
+
+        final result = await layer.featureTable?.queryFeatures(queryParams);
+
+        if (result != null && result.features().isNotEmpty) {
+          layerNames.add(layer.name); // ✅ collect layer name
+        }
+      }
+    }
+
+    return layerNames;
+  }
+
+
+
+
+  Future<bool> processNewFeature(
+      Feature? wtpFeature,
+      Feature newFeature,
+      ) async {
+    try {
+      FeatureSubtype? newFeatureSubtype = await getSubtype(newFeature);
+      FeatureSubtype? wtpFeatureSubtype = await getSubtype(wtpFeature!);
+
+      List<String> interceptedLayerName = await findIntersectingLayers(wtpFeature, _map);
+
+      // ——— FEATURE DEPENDENCY CHECK (Sequence) ———
+      // Find index of new layer name, if > 0, its dependency is previous one in the list
+      int currentIdx = wtpLayerNames.indexOf(_selectedLayer!.name);
+      if (currentIdx > 0) {
+        String requiredName = wtpLayerNames[currentIdx - 1];
+        if (!interceptedLayerName.contains(requiredName)) {
+          // Dependency missing, show dialog
+          showMessageDialog(
+              'You need to add "$requiredName" first before "${_selectedLayer!.name}".');
+          return false;
+        }
+      }
+
+      // // ——— SUBTYPE CHECK ———
+      debugPrint("wtpFeatureSubtype!.name ${wtpFeatureSubtype!.name}");
+      debugPrint("newFeatureSubtype!.name ${newFeatureSubtype!.name}");
+      debugPrint("wtpFeatureSubtype!.name ${wtpFeatureSubtype.code}");
+      debugPrint("newFeatureSubtype!.name ${newFeatureSubtype.code}");
+      // bool? subtypeMatched = wtpFeatureSubtype.code.contains(newFeatureSubtype.code);
+      bool? subtypeMatched = wtpFeatureSubtype.code == newFeatureSubtype.code;
+      if (!subtypeMatched) {
+        showMessageDialog(
+            'Subtype mismatch. WTP layer has subtype: ${wtpFeatureSubtype!.name}.\n'
+                'New feature subtype is: ${newFeatureSubtype!.name}');
+        return false;
+      }
+      else{
+        debugPrint("Feature Subtype Match");
+      }
+    return true;
+    } catch (e) {
+      // Handle errors (query, dialog, etc.)
+      showMessageDialog('Error: ${e.toString()}');
+      return false;
+    }
+  }
+
+  Future<Feature?> checkFeatureInterceptWTP(Geometry? featureGeometry)
+  async {
+    debugPrint("LayerPresent ${_selectedLayer!.name}");
+
+    debugPrint("checkFeatureInterceptWTP ");
+    final wtpLayer = _map.operationalLayers
+        .whereType<FeatureLayer>()
+        .firstWhere((layer) => layer.name == 'WTP', orElse: () => throw Exception('WTP layer not found'));
+    debugPrint("checkFeatureInterceptWTP  $wtpLayer");
+    // Create QueryParameters with spatial relationship 'intersects' and no geometry return
+    final queryParams = QueryParameters()
+      ..geometry = featureGeometry
+      ..spatialRelationship = SpatialRelationship.intersects
+      ..returnGeometry = false;
+    debugPrint("checkFeatureInterceptWTP queryParams $queryParams");
+    // Use the featureTable from the layer, cast as ServiceFeatureTable
+    ArcGISFeatureTable? featureTable;
+    if(wtpLayer.featureTable is ServiceFeatureTable)
+    {
+      featureTable = wtpLayer.featureTable as ServiceFeatureTable;
+      debugPrint("checkFeatureInterceptWTP featureTable $featureTable");
+    }
+    else if(wtpLayer.featureTable is GeodatabaseFeatureTable)
+    {
+      featureTable = wtpLayer.featureTable as GeodatabaseFeatureTable;
+      debugPrint("checkFeatureInterceptWTP featureTable $featureTable");
+    }
+    // Perform the query on the feature table
+    // final queryResult = await featureTable.queryFeatures(queryParams);
+    FeatureQueryResult? queryResult;
+    if(featureTable is ServiceFeatureTable)
+    {
+      queryResult = await featureTable.queryFeaturesWithFieldOptions(
+        parameters: queryParams, queryFeatureFields: QueryFeatureFields.loadAll, // Option to load all fields
+      );
+      debugPrint("checkFeatureInterceptWTP queryResult $queryResult");
+    }
+    else if(wtpLayer.featureTable is GeodatabaseFeatureTable)
+    {
+      queryResult = await (featureTable as GeodatabaseFeatureTable).queryFeatures(queryParams);
+      debugPrint("checkFeatureInterceptWTP queryResult $queryResult");
+    }
+
+
+    // Get the features from the query result
+    final features = queryResult?.features();
+    debugPrint("checkFeatureInterceptWTP features.isNotEmpty ${features?.isNotEmpty}");
+    if (features!=null&& features.isNotEmpty) {
+      final firstFeature = features.first;
+      return firstFeature;
+    }
+    else
+    {
+        return null;
+    }
+  }
+  List<Map<String, dynamic>> schemeList = [];
   Future<Map<String, dynamic>?> getSchemeNameFromExtent(Geometry? featureGeometry) async {
     // Find the FeatureLayer named 'SchemeExtent' from the map's operational layers
     debugPrint("getSchemeNameFromExtent ");
+    schemeList = [];
     final schemeExtentLayer = _map.operationalLayers
         .whereType<FeatureLayer>()
         .firstWhere((layer) => layer.name == 'SchemeExtent', orElse: () => throw Exception('SchemeExtent layer not found'));
@@ -881,6 +1022,18 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
     final features = queryResult?.features();
     debugPrint("getSchemeNameFromExtent features.isNotEmpty ${features?.isNotEmpty}");
     if (features!=null&& features.isNotEmpty) {
+      for (final f in features) {
+        final attributes = f.attributes;
+        final schemename = attributes['schemename']?.toString();
+        final schemeid = attributes['schemeid'];
+
+        if (schemename != null && schemeid != null) {
+          schemeList.add({
+            "schemeid": schemeid,
+            "schemename": schemename,
+          });
+        }
+      }
       final firstFeature = features.first;
       final attributes = firstFeature.attributes;
       debugPrint('getSchemeNameFromExtent attributes: $attributes');

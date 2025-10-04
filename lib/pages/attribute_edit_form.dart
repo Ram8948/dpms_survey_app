@@ -12,6 +12,7 @@ class AttributeEditForm extends StatefulWidget {
   final VoidCallback onFormSaved;
   final BuildContext parentScaffoldContext;
   final bool isOffline;
+  final List<Map<String, dynamic>> schemeList;
 
   const AttributeEditForm({
     required this.feature,
@@ -20,6 +21,7 @@ class AttributeEditForm extends StatefulWidget {
     required this.onFormSaved,
     required this.parentScaffoldContext,
     required this.isOffline,
+    required this.schemeList,
     super.key,
   });
 
@@ -68,6 +70,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
           widget.feature.featureTable as GeodatabaseFeatureTable;
       relatedTables = _mainFeatureTable?.getRelatedTables();
     }
+    schemeIdController.text = _editedAttributes['id']?.toString() ?? '';
     _loadAttachments();
   }
 
@@ -489,6 +492,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       );
     }
   }
+  TextEditingController schemeIdController = TextEditingController();
 
   Widget _buildFieldCard(Field field, List<PopupField> popupFields) {
     final isEditable = field.editable;
@@ -520,18 +524,68 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       }
       return (date != null) ? DateFormat('yyyy-MM-dd').format(date) : '';
     }
+    debugPrint("label $label");
+
+    // Special case for "Scheme Name" label to show scheme dropdown
+    if (label == "Scheme Name" && widget.schemeList.isNotEmpty) {
+      String? selectedSchemeName = _editedAttributes[field.name];
+      int? selectedSchemeId = _editedAttributes["id"];
+      debugPrint("selectedSchemeName $selectedSchemeName");
+      debugPrint("selectedSchemeId $selectedSchemeId");
+      return Card(
+        margin: const EdgeInsets.symmetric(vertical: 5),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: DropdownButtonFormField<String>(
+            isExpanded: true,
+            value: selectedSchemeName,
+            decoration: InputDecoration(
+              labelText: label,
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
+            items: widget.schemeList.map((scheme) {
+              return DropdownMenuItem<String>(
+                value: scheme['schemename'],
+                child: Text(scheme['schemename']),
+              );
+            }).toList(),
+            onChanged: (String? newValue) {
+              setState(() {
+                selectedSchemeName = newValue;
+                _editedAttributes[field.name] = newValue;
+
+                selectedSchemeId = widget.schemeList
+                    .firstWhere((scheme) => scheme['schemename'] == newValue)['schemeid'];
+                _editedAttributes['id'] = selectedSchemeId;
+                schemeIdController.text = selectedSchemeId.toString();
+                debugPrint("selectedSchemeName $newValue");
+                debugPrint("selectedSchemeId $selectedSchemeId");
+              });
+            },
+            validator: (val) {
+              if (!field.nullable && (val == null || val.isEmpty)) {
+                return '$label is required';
+              }
+              return null;
+            },
+          ),
+        ),
+      );
+    }
 
     // Dropdown for coded value domain
     if (field.domain is CodedValueDomain && shouldBeEditable) {
       final domain = field.domain as CodedValueDomain;
       final codedValues = domain.codedValues;
       final selectedValue = _editedAttributes[field.name]?.toString();
-
+      // debugPrint("domain $domain codedValues $codedValues selectedValue $selectedValue");
       return Card(
         margin: const EdgeInsets.symmetric(vertical: 5),
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: DropdownButtonFormField<String>(
+            isExpanded: true,
             value: selectedValue,
             decoration: InputDecoration(
               labelText: label,
@@ -650,7 +704,8 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
               ),
             Expanded(
               child: TextFormField(
-                initialValue: value?.toString() ?? '',
+                controller: label == "Scheme ID" ? schemeIdController : null,
+                initialValue: label == "Scheme ID" ? null : value?.toString() ?? '',
                 enabled: shouldBeEditable,
                 readOnly: !shouldBeEditable,
                 style:
@@ -964,6 +1019,7 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
         progressValues.isNotEmpty
             ? progressValues.reduce((a, b) => a > b ? a : b)
             : 0;
+
   }
 
   @override

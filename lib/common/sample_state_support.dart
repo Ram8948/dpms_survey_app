@@ -23,7 +23,7 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
     }
   }
 
-  Future<void> showFeatureActionPopup(ArcGISFeature feature, FeatureLayer featureLayer,Popup featurePopup,bool isOffline,VoidCallback onFormSaved) async {
+  Future<void> showFeatureActionPopup(ArcGISFeature feature, FeatureLayer featureLayer,Popup featurePopup,bool isOffline,VoidCallback onFormSaved,List<Map<String, dynamic>> schemeList) async {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
@@ -36,7 +36,7 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
                 title: const Text('Update Feature'),
                 onTap: () {
                   Navigator.pop(context); // Close the bottom sheet
-                  openAttributeEditForm(feature, featureLayer,featurePopup,isOffline,onFormSaved);
+                  openAttributeEditForm(feature, featureLayer,featurePopup,isOffline,onFormSaved,schemeList);
                 },
               ),
               ListTile(
@@ -125,7 +125,8 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
       FeatureLayer layer,
       Popup featurePopup,
       bool isOffline,
-      VoidCallback onFormSaved
+      VoidCallback onFormSaved,
+      List<Map<String, dynamic>> schemeList
       ) async {
     await showModalBottomSheet(
       context: context,
@@ -151,6 +152,7 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
           // onFormSaved: onFormSaved,
           parentScaffoldContext: context,
           isOffline: isOffline,
+          schemeList: schemeList,
         ),
       ),
     );
