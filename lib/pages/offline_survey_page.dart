@@ -5,9 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import '../common/sample_state_support.dart';
-import 'attribute_edit_form.dart';
-import 'package:path/path.dart' as path;
-import 'dart:math';
 
 class OfflineSurveyPage extends StatefulWidget {
   final Uri portalUri;

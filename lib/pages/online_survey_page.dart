@@ -1,12 +1,8 @@
 import 'package:arcgis_maps/arcgis_maps.dart';
-import 'package:arcgis_maps_toolkit/arcgis_maps_toolkit.dart';
 import 'package:dpmssurveyapp/common/sample_state_support.dart';
 import 'package:dpmssurveyapp/pages/snap_geometry_edits.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-import '../main.dart';
-import 'attribute_edit_form.dart';
 
 class OnlineSurveyPage extends StatefulWidget {
   final Uri portalUri;
@@ -28,7 +24,6 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
 
   bool _loadingFeature = false;
   FeatureLayer? _selectedFeatureLayer;
-  ArcGISFeature? _selectedFeature;
   ArcGISMap? _map;
 
   @override
