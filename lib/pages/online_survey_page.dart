@@ -67,36 +67,32 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Online Survey'),
+        iconTheme: IconThemeData(
+          color: Colors.white, // Set your desired color here
+        ),
+        title: const Text('Online Survey',style: TextStyle(color: Colors.white),),
         centerTitle: true,
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.black38,
         elevation: 0,
         systemOverlayStyle:
             SystemUiOverlayStyle.light, // For light status bar icons
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue.shade400, Colors.blue.shade700],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      body: Stack(
+        children: [
+          ArcGISMapView(
+            controllerProvider: () => _mapViewController,
+            onTap: _handleMapTap,
           ),
-        ),
-        child: Stack(
-          children: [
-            ArcGISMapView(
-              controllerProvider: () => _mapViewController,
-              onTap: _handleMapTap,
+          if (_loadingFeature)
+            Container(
+              color: Colors.black45,
+              child: const Center(child: CircularProgressIndicator()),
             ),
-            if (_loadingFeature)
-              Container(
-                color: Colors.black45,
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-          ],
-        ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton:Padding(
+    padding: const EdgeInsets.only(bottom: 32.0),
+    child: FloatingActionButton(
         onPressed: () async {
           if (_map != null) {
             final Viewpoint? sourceViewpoint = await _mapViewController.getCurrentViewpoint(ViewpointType.centerAndScale);
@@ -120,10 +116,11 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
           }
         },
         tooltip: 'Add Survey',
-        backgroundColor: Colors.blue.shade900,
-        foregroundColor: Colors.white, // Icon color set explicitly to white
+        // backgroundColor: Colors.blue.shade900,
+        // foregroundColor: Colors.white, // Icon color set explicitly to white
         child: const Icon(Icons.add),
       ),
+      )
     );
   }
 

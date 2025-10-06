@@ -10,19 +10,21 @@ class SnapGeometryEdits extends StatefulWidget {
   final String webMapItemId;
   final bool isOffline;
   final Viewpoint viewPoint;
+
   const SnapGeometryEdits({
     super.key,
     required this.portalUri,
     required this.webMapItemId,
     required this.isOffline,
-    required this.viewPoint
+    required this.viewPoint,
   });
 
   @override
   State<SnapGeometryEdits> createState() => _SnapGeometryEditsState();
 }
 
-class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateSupport {
+class _SnapGeometryEditsState extends State<SnapGeometryEdits>
+    with SampleStateSupport {
   final _mapViewController = ArcGISMapView.createController();
   final _graphicsOverlay = GraphicsOverlay();
   final _geometryEditor = GeometryEditor();
@@ -58,45 +60,39 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Add New Feature'),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue.shade400, Colors.blue.shade700],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+        iconTheme: IconThemeData(
+          color: Colors.white, // Set your desired color here
         ),
-        child: SafeArea(
-          top: false,
-          child: Stack(
-            children: [
-              Column(
-                children: [
-                  Expanded(
-                    child: ArcGISMapView(
-                      controllerProvider: () => _mapViewController,
-                      onMapViewReady: onMapViewReady,
-                      onTap: !_geometryEditorIsStarted ? onTap : null,
-                    ),
+        title: const Text(
+          'Add New Feature',
+          style: TextStyle(color: Colors.white),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.black38,
+        elevation: 0,
+        systemOverlayStyle:
+            SystemUiOverlayStyle.light, // For light status bar icons
+      ),
+      body: SafeArea(
+        top: false,
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                Expanded(
+                  child: ArcGISMapView(
+                    controllerProvider: () => _mapViewController,
+                    onMapViewReady: onMapViewReady,
+                    onTap: !_geometryEditorIsStarted ? onTap : null,
                   ),
-                  buildBottomMenu(),
-                ],
-              ),
-              if (_showEditToolbar)
-                Positioned(
-                  bottom: 120,
-                  right: 5,
-                  child: buildEditingToolbar(),
                 ),
-              if (_snapSettingsVisible) buildSnapSettings(context),
-            ],
-          ),
+                buildBottomMenu(),
+              ],
+            ),
+            if (_showEditToolbar)
+              Positioned(bottom: 120, right: 5, child: buildEditingToolbar()),
+            if (_snapSettingsVisible) buildSnapSettings(context),
+          ],
         ),
       ),
     );
@@ -110,7 +106,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
     // Set the feature tiling mode on the map.
     // Snapping is used to maintain data integrity between different sources of data when editing,
     // so full resolution is needed for valid snapping.
-    if(!widget.isOffline) {
+    if (!widget.isOffline) {
       final portal = Portal(widget.portalUri);
       await portal.load();
 
@@ -129,13 +125,14 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
 
       // Set the map to the map view controller.
       _mapViewController.arcGISMap = _map;
-    }
-    else {
+    } else {
       final documentsDir = await getApplicationDocumentsDirectory();
       // final mmpkFilePath = path.join(documentsDir.path, 'offline_map', 'p13', 'mobile_map.mmap');
       final offlineMapFolderUri = documentsDir.uri.resolve('offline_map/');
-      final mobileMapPackage = MobileMapPackage.withFileUri(offlineMapFolderUri);
-// Note: Some SDK versions accept folder URI; if not, load layers individually
+      final mobileMapPackage = MobileMapPackage.withFileUri(
+        offlineMapFolderUri,
+      );
+      // Note: Some SDK versions accept folder URI; if not, load layers individually
       await mobileMapPackage.load();
 
       if (mobileMapPackage.maps.isNotEmpty) {
@@ -161,16 +158,16 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
     _geometryEditor.tool = _reticleVertexTool;
     // Listen to changes in canUndo in order to enable/disable the UI.
     _geometryEditor.onCanUndoChanged.listen(
-          (canUndo) => setState(() => _geometryEditorCanUndo = canUndo),
+      (canUndo) => setState(() => _geometryEditorCanUndo = canUndo),
     );
     // Listen to changes in isStarted in order to enable/disable the UI.
     _geometryEditor.onIsStartedChanged.listen(
-          (isStarted) => setState(() => _geometryEditorIsStarted = isStarted),
+      (isStarted) => setState(() => _geometryEditorIsStarted = isStarted),
     );
     // Listen to changes in the selected element in order to enable/disable the UI.
     _geometryEditor.onSelectedElementChanged.listen(
-          (selectedElement) => setState(
-            () => _geometryEditorHasSelectedElement = selectedElement != null,
+      (selectedElement) => setState(
+        () => _geometryEditorHasSelectedElement = selectedElement != null,
       ),
     );
 
@@ -202,20 +199,17 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
         // iterate through all sublayers inside GroupLayer
         for (var subLayer in layer.layers) {
           if (subLayer is FeatureLayer) {
-            _layerMenuItems.add(DropdownMenuItem(
-              value: subLayer,
-              child: Text(subLayer.name),
-            ));
+            _layerMenuItems.add(
+              DropdownMenuItem(value: subLayer, child: Text(subLayer.name)),
+            );
           }
         }
       } else if (layer is FeatureLayer) {
-        _layerMenuItems.add(DropdownMenuItem(
-          value: layer,
-          child: Text(layer.name),
-        ));
+        _layerMenuItems.add(
+          DropdownMenuItem(value: layer, child: Text(layer.name)),
+        );
       }
     }
-
 
     // Set the ready state variable to true to enable the sample UI.
     setState(() => _ready = true);
@@ -315,6 +309,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
     // Reset the selected geometry type to null.
     setState(() => _selectedGeometryType = null);
   }
+
   final List<String> wtpLayerNames = [
     'Aeration Fountain',
     'Clariflocculator',
@@ -331,11 +326,10 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
     return wtpLayerNames.contains(layerName);
   }
 
-
   Future<void> createFeature(Geometry? geometry) async {
     // Disable the UI while the async operations are in progress.
     setState(() => _ready = false);
-    if(_selectedtable!=null) {
+    if (_selectedtable != null) {
       // Create the feature.
       final feature = _selectedtable?.createFeature();
 
@@ -357,29 +351,25 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
         feature.refresh();
         debugPrint("Attribute keys: ${feature.attributes.keys.toList()}");
         debugPrint("_selectedLayer!.name: ${_selectedLayer!.name}");
-        if(isLayerPresent(_selectedLayer!.name.trim()))
-        {
-           Feature? interceptedFeature = await checkFeatureInterceptWTP(feature.geometry);
-           if(interceptedFeature!=null)
-           {
-              if(! await processNewFeature(interceptedFeature, feature))
-              {
-                  return;
-              }
-           }
-           else
-           {
-             showMessageDialog('This feature can not be draw outside the WTP Layer');
-             return;
-           }
-        }
-        else
-        {
+        if (isLayerPresent(_selectedLayer!.name.trim())) {
+          Feature? interceptedFeature = await checkFeatureInterceptWTP(
+            feature.geometry,
+          );
+          if (interceptedFeature != null) {
+            if (!await processNewFeature(interceptedFeature, feature)) {
+              return;
+            }
+          } else {
+            showMessageDialog(
+              'This feature can not be draw outside the WTP Layer',
+            );
+            return;
+          }
+        } else {
           debugPrint("Not LayerPresent ${_selectedLayer!.name}");
         }
         final attributes = await getSchemeNameFromExtent(feature.geometry);
-        if(attributes!=null)
-        {
+        if (attributes != null) {
           debugPrint("Attribute keys: ${attributes.keys.toList()}");
           debugPrint("Attribute keys: ${attributes["regionname"]}");
           debugPrint("Attribute keys: ${attributes["circlename"]}");
@@ -395,24 +385,32 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
         showMessageDialog('Created feature ${feature.attributes['objectid']}');
         Popup? featurePopup;
 
-// Assuming: you have ArcGISFeature 'feature' and FeatureLayer '_selectedLayer'
-        final popupDefinition = _selectedLayer?.popupDefinition; // get template/definition
+        // Assuming: you have ArcGISFeature 'feature' and FeatureLayer '_selectedLayer'
+        final popupDefinition =
+            _selectedLayer?.popupDefinition; // get template/definition
 
         if (popupDefinition != null) {
           featurePopup = Popup(
-            geoElement: feature,            // the selected ArcGISFeature
+            geoElement: feature, // the selected ArcGISFeature
             popupDefinition: popupDefinition, // layer's popup config
             // You may provide additional options if needed (title, etc.)
           );
         }
-        await showFeatureActionPopup(feature as ArcGISFeature,_selectedLayer!,featurePopup!,widget.isOffline,() async {
-          final Viewpoint? sourceViewpoint = await _mapViewController.getCurrentViewpoint(ViewpointType.centerAndScale);
-          if (!mounted) return;
+        await showFeatureActionPopup(
+          feature as ArcGISFeature,
+          _selectedLayer!,
+          featurePopup!,
+          widget.isOffline,
+          () async {
+            final Viewpoint? sourceViewpoint = await _mapViewController
+                .getCurrentViewpoint(ViewpointType.centerAndScale);
+            if (!mounted) return;
 
-          Navigator.pop(context, sourceViewpoint);
-          Navigator.pop(context, sourceViewpoint);
-
-        },schemeList);
+            Navigator.pop(context, sourceViewpoint);
+            Navigator.pop(context, sourceViewpoint);
+          },
+          schemeList,
+        );
       } else {
         showMessageDialog('Error creating feature, geometry was null.');
       }
@@ -449,21 +447,22 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
             style: Theme.of(context).textTheme.labelMedium,
             value: _selectedLayer,
             items: _layerMenuItems,
-            onChanged: !_geometryEditorIsStarted
-                ? (layer) async {
-              setState(() => _selectedLayer = layer);
-              await layer?.load();
-              _selectedtable =
-              layer?.featureTable as ArcGISFeatureTable?;
-              setState(() {
-                _selectedGeometryType =
-                    layer?.featureTable?.geometryType;
-                if (_selectedGeometryType != null) {
-                  startEditingWithGeometryType(_selectedGeometryType!);
-                }
-              });
-            }
-                : null,
+            onChanged:
+                !_geometryEditorIsStarted
+                    ? (layer) async {
+                      setState(() => _selectedLayer = layer);
+                      await layer?.load();
+                      _selectedtable =
+                          layer?.featureTable as ArcGISFeatureTable?;
+                      setState(() {
+                        _selectedGeometryType =
+                            layer?.featureTable?.geometryType;
+                        if (_selectedGeometryType != null) {
+                          startEditingWithGeometryType(_selectedGeometryType!);
+                        }
+                      });
+                    }
+                    : null,
             isDense: true,
           ),
         ),
@@ -471,10 +470,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
           child: DropdownButton(
             isExpanded: true,
             alignment: Alignment.center,
-            hint: Text(
-              'Tool',
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
+            hint: Text('Tool', style: Theme.of(context).textTheme.labelMedium),
             iconEnabledColor: Theme.of(context).colorScheme.primary,
             style: Theme.of(context).textTheme.labelMedium,
             value: _selectedTool,
@@ -489,14 +485,12 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
           ),
         ),
         IconButton(
-          onPressed: () =>
-              setState(() => _showEditToolbar = !_showEditToolbar),
+          onPressed: () => setState(() => _showEditToolbar = !_showEditToolbar),
           icon: const Icon(Icons.edit),
         ),
       ],
     );
   }
-
 
   Widget buildEditingToolbar() {
     // A toolbar of buttons with icons for editing functions. Tooltips are used to aid the user experience.
@@ -521,9 +515,9 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
                     message: 'Undo',
                     child: ElevatedButton(
                       onPressed:
-                      _geometryEditorIsStarted && _geometryEditorCanUndo
-                          ? _geometryEditor.undo
-                          : null,
+                          _geometryEditorIsStarted && _geometryEditorCanUndo
+                              ? _geometryEditor.undo
+                              : null,
                       child: const Icon(Icons.undo),
                     ),
                   ),
@@ -532,12 +526,12 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
                     message: 'Delete selected element',
                     child: ElevatedButton(
                       onPressed:
-                      _geometryEditorIsStarted &&
-                          _geometryEditorHasSelectedElement &&
-                          _geometryEditor.selectedElement != null &&
-                          _geometryEditor.selectedElement!.canDelete
-                          ? _geometryEditor.deleteSelectedElement
-                          : null,
+                          _geometryEditorIsStarted &&
+                                  _geometryEditorHasSelectedElement &&
+                                  _geometryEditor.selectedElement != null &&
+                                  _geometryEditor.selectedElement!.canDelete
+                              ? _geometryEditor.deleteSelectedElement
+                              : null,
                       child: const Icon(Icons.clear),
                     ),
                   ),
@@ -559,7 +553,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
                     message: 'Stop and discard edits',
                     child: ElevatedButton(
                       onPressed:
-                      _geometryEditorIsStarted ? stopAndDiscardEdits : null,
+                          _geometryEditorIsStarted ? stopAndDiscardEdits : null,
                       // onPressed: ()
                       // {
                       //   Navigator.pop(context);
@@ -581,155 +575,155 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
       onCloseIconPressed: () => setState(() => _snapSettingsVisible = false),
       settingsWidgets:
           (context) => [
-        Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.4,
-            maxWidth: MediaQuery.sizeOf(context).height * 0.8,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.4,
+                maxWidth: MediaQuery.sizeOf(context).height * 0.8,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
                   children: [
-                    Text(
-                      'Snap Settings',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    // Add a checkbox to toggle all snapping options.
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Enable all'),
+                        Text(
+                          'Snap Settings',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        // Add a checkbox to toggle all snapping options.
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Enable all'),
+                            Checkbox(
+                              value:
+                                  _snappingEnabled &&
+                                  _geometryGuidesEnabled &&
+                                  _featureSnappingEnabled,
+                              onChanged: (allEnabled) {
+                                if (allEnabled != null) {
+                                  _geometryEditor.snapSettings.isEnabled =
+                                      allEnabled;
+                                  _geometryEditor
+                                      .snapSettings
+                                      .isGeometryGuidesEnabled = allEnabled;
+                                  _geometryEditor
+                                      .snapSettings
+                                      .isFeatureSnappingEnabled = allEnabled;
+                                  setState(() {
+                                    _snappingEnabled = allEnabled;
+                                    _geometryGuidesEnabled = allEnabled;
+                                    _featureSnappingEnabled = allEnabled;
+                                  });
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    // Add a checkbox to toggle whether snapping is enabled.
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Snapping enabled'),
                         Checkbox(
-                          value:
-                          _snappingEnabled &&
-                              _geometryGuidesEnabled &&
-                              _featureSnappingEnabled,
-                          onChanged: (allEnabled) {
-                            if (allEnabled != null) {
+                          value: _snappingEnabled,
+                          onChanged: (snappingEnabled) {
+                            if (snappingEnabled != null) {
                               _geometryEditor.snapSettings.isEnabled =
-                                  allEnabled;
-                              _geometryEditor
-                                  .snapSettings
-                                  .isGeometryGuidesEnabled = allEnabled;
-                              _geometryEditor
-                                  .snapSettings
-                                  .isFeatureSnappingEnabled = allEnabled;
-                              setState(() {
-                                _snappingEnabled = allEnabled;
-                                _geometryGuidesEnabled = allEnabled;
-                                _featureSnappingEnabled = allEnabled;
-                              });
+                                  snappingEnabled;
+                              setState(
+                                () => _snappingEnabled = snappingEnabled,
+                              );
                             }
                           },
                         ),
                       ],
                     ),
-                  ],
-                ),
-                // Add a checkbox to toggle whether snapping is enabled.
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Snapping enabled'),
-                    Checkbox(
-                      value: _snappingEnabled,
-                      onChanged: (snappingEnabled) {
-                        if (snappingEnabled != null) {
-                          _geometryEditor.snapSettings.isEnabled =
-                              snappingEnabled;
-                          setState(
-                                () => _snappingEnabled = snappingEnabled,
-                          );
-                        }
-                      },
-                    ),
-                  ],
-                ),
-                // Add a checkbox to toggle whether geometry guides are enabled.
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Geometry guides'),
-                    Checkbox(
-                      value: _geometryGuidesEnabled,
-                      onChanged: (geometryGuidesEnabled) {
-                        if (geometryGuidesEnabled != null) {
-                          _geometryEditor
-                              .snapSettings
-                              .isGeometryGuidesEnabled =
-                              geometryGuidesEnabled;
-                          setState(
+                    // Add a checkbox to toggle whether geometry guides are enabled.
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Geometry guides'),
+                        Checkbox(
+                          value: _geometryGuidesEnabled,
+                          onChanged: (geometryGuidesEnabled) {
+                            if (geometryGuidesEnabled != null) {
+                              _geometryEditor
+                                      .snapSettings
+                                      .isGeometryGuidesEnabled =
+                                  geometryGuidesEnabled;
+                              setState(
                                 () =>
-                            _geometryGuidesEnabled =
-                                geometryGuidesEnabled,
-                          );
-                        }
-                      },
+                                    _geometryGuidesEnabled =
+                                        geometryGuidesEnabled,
+                              );
+                            }
+                          },
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                // Add a checkbox to toggle whether feature snapping is enabled.
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Feature snapping'),
-                    Checkbox(
-                      value: _featureSnappingEnabled,
-                      onChanged: (featureSnappingEnabled) {
-                        if (featureSnappingEnabled != null) {
-                          _geometryEditor
-                              .snapSettings
-                              .isFeatureSnappingEnabled =
-                              featureSnappingEnabled;
-                          setState(
+                    // Add a checkbox to toggle whether feature snapping is enabled.
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Feature snapping'),
+                        Checkbox(
+                          value: _featureSnappingEnabled,
+                          onChanged: (featureSnappingEnabled) {
+                            if (featureSnappingEnabled != null) {
+                              _geometryEditor
+                                      .snapSettings
+                                      .isFeatureSnappingEnabled =
+                                  featureSnappingEnabled;
+                              setState(
                                 () =>
-                            _featureSnappingEnabled =
-                                featureSnappingEnabled,
-                          );
-                        }
-                      },
+                                    _featureSnappingEnabled =
+                                        featureSnappingEnabled,
+                              );
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Text(
+                          'Select snap sources',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Add checkboxes for enabling the point layers as snap sources.
+                    buildSnapSourcesSelection(
+                      'Point layers',
+                      _pointLayerSnapSources,
+                    ),
+                    // Add checkboxes for the polyline layers as snap sources.
+                    buildSnapSourcesSelection(
+                      'Polyline layers',
+                      _polylineLayerSnapSources,
+                    ),
+                    // Add checkboxes for the graphics overlay as snap sources.
+                    buildSnapSourcesSelection(
+                      'Graphics Overlay',
+                      _graphicsOverlaySnapSources,
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Text(
-                      'Select snap sources',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                // Add checkboxes for enabling the point layers as snap sources.
-                buildSnapSourcesSelection(
-                  'Point layers',
-                  _pointLayerSnapSources,
-                ),
-                // Add checkboxes for the polyline layers as snap sources.
-                buildSnapSourcesSelection(
-                  'Polyline layers',
-                  _polylineLayerSnapSources,
-                ),
-                // Add checkboxes for the graphics overlay as snap sources.
-                buildSnapSourcesSelection(
-                  'Graphics Overlay',
-                  _graphicsOverlaySnapSources,
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
     );
   }
 
   Widget buildSnapSourcesSelection(
-      String label,
-      List<SnapSourceSettings> allSourceSettings,
-      ) {
+    String label,
+    List<SnapSourceSettings> allSourceSettings,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -743,7 +737,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
                 // A checkbox to enable all source settings in the category.
                 Checkbox(
                   value: allSourceSettings.every(
-                        (snapSourceSettings) => snapSourceSettings.isEnabled,
+                    (snapSourceSettings) => snapSourceSettings.isEnabled,
                   ),
                   onChanged: (allEnabled) {
                     if (allEnabled != null) {
@@ -751,8 +745,8 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
                           .map(
                             (snapSourceSettings) => setState(
                               () => snapSourceSettings.isEnabled = allEnabled,
-                        ),
-                      )
+                            ),
+                          )
                           .toList();
                     }
                   },
@@ -763,29 +757,29 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
         ),
         Column(
           children:
-          allSourceSettings.map((sourceSetting) {
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Display the layer name, or set default text for graphics overlay.
-                Text(
-                  allSourceSettings == _pointLayerSnapSources ||
-                      allSourceSettings == _polylineLayerSnapSources
-                      ? (sourceSetting.source as FeatureLayer).name
-                      : 'Editor Graphics Overlay',
-                ),
-                // A checkbox to toggle whether this source setting is enabled.
-                Checkbox(
-                  value: sourceSetting.isEnabled,
-                  onChanged: (isEnabled) {
-                    if (isEnabled != null) {
-                      setState(() => sourceSetting.isEnabled = isEnabled);
-                    }
-                  },
-                ),
-              ],
-            );
-          }).toList(),
+              allSourceSettings.map((sourceSetting) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Display the layer name, or set default text for graphics overlay.
+                    Text(
+                      allSourceSettings == _pointLayerSnapSources ||
+                              allSourceSettings == _polylineLayerSnapSources
+                          ? (sourceSetting.source as FeatureLayer).name
+                          : 'Editor Graphics Overlay',
+                    ),
+                    // A checkbox to toggle whether this source setting is enabled.
+                    Checkbox(
+                      value: sourceSetting.isEnabled,
+                      onChanged: (isEnabled) {
+                        if (isEnabled != null) {
+                          setState(() => sourceSetting.isEnabled = isEnabled);
+                        }
+                      },
+                    ),
+                  ],
+                );
+              }).toList(),
         ),
         const SizedBox(height: 20),
       ],
@@ -804,10 +798,10 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
     return geometryTypes
         .map(
           (type) => DropdownMenuItem(
-        value: type,
-        child: Text(type.name.capitalize()),
-      ),
-    )
+            value: type,
+            child: Text(type.name.capitalize()),
+          ),
+        )
         .toList();
   }
 
@@ -836,7 +830,9 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
 
         // Get the Subtype from the table definition
         try {
-          return featureTable.featureSubtypes.firstWhere((s) => s.code == subtypeCode);
+          return featureTable.featureSubtypes.firstWhere(
+            (s) => s.code == subtypeCode,
+          );
         } catch (e) {
           return null;
         }
@@ -845,7 +841,9 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
   }
 
   Future<List<String>> findIntersectingLayers(
-      Feature feature, ArcGISMap map) async {
+    Feature feature,
+    ArcGISMap map,
+  ) async {
     final geometry = feature.geometry;
     if (geometry == null) return [];
 
@@ -853,9 +851,10 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
 
     for (final layer in map.operationalLayers) {
       if (layer is FeatureLayer) {
-        final queryParams = QueryParameters()
-          ..geometry = geometry
-          ..spatialRelationship = SpatialRelationship.intersects;
+        final queryParams =
+            QueryParameters()
+              ..geometry = geometry
+              ..spatialRelationship = SpatialRelationship.intersects;
 
         final result = await layer.featureTable?.queryFeatures(queryParams);
 
@@ -868,18 +867,18 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
     return layerNames;
   }
 
-
-
-
   Future<bool> processNewFeature(
-      Feature? wtpFeature,
-      Feature newFeature,
-      ) async {
+    Feature? wtpFeature,
+    Feature newFeature,
+  ) async {
     try {
       FeatureSubtype? newFeatureSubtype = await getSubtype(newFeature);
       FeatureSubtype? wtpFeatureSubtype = await getSubtype(wtpFeature!);
 
-      List<String> interceptedLayerName = await findIntersectingLayers(wtpFeature, _map);
+      List<String> interceptedLayerName = await findIntersectingLayers(
+        wtpFeature,
+        _map,
+      );
 
       // ——— FEATURE DEPENDENCY CHECK (Sequence) ———
       // Find index of new layer name, if > 0, its dependency is previous one in the list
@@ -889,7 +888,8 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
         if (!interceptedLayerName.contains(requiredName)) {
           // Dependency missing, show dialog
           showMessageDialog(
-              'You need to add "$requiredName" first before "${_selectedLayer!.name}".');
+            'You need to add "$requiredName" first before "${_selectedLayer!.name}".',
+          );
           return false;
         }
       }
@@ -903,14 +903,14 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
       bool? subtypeMatched = wtpFeatureSubtype.code == newFeatureSubtype.code;
       if (!subtypeMatched) {
         showMessageDialog(
-            'Subtype mismatch. WTP layer has subtype: ${wtpFeatureSubtype!.name}.\n'
-                'New feature subtype is: ${newFeatureSubtype!.name}');
+          'Subtype mismatch. WTP layer has subtype: ${wtpFeatureSubtype!.name}.\n'
+          'New feature subtype is: ${newFeatureSubtype!.name}',
+        );
         return false;
-      }
-      else{
+      } else {
         debugPrint("Feature Subtype Match");
       }
-    return true;
+      return true;
     } catch (e) {
       // Handle errors (query, dialog, etc.)
       showMessageDialog('Error: ${e.toString()}');
@@ -918,120 +918,122 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
     }
   }
 
-  Future<Feature?> checkFeatureInterceptWTP(Geometry? featureGeometry)
-  async {
+  Future<Feature?> checkFeatureInterceptWTP(Geometry? featureGeometry) async {
     debugPrint("LayerPresent ${_selectedLayer!.name}");
 
     debugPrint("checkFeatureInterceptWTP ");
     final wtpLayer = _map.operationalLayers
         .whereType<FeatureLayer>()
-        .firstWhere((layer) => layer.name == 'WTP', orElse: () => throw Exception('WTP layer not found'));
+        .firstWhere(
+          (layer) => layer.name == 'WTP',
+          orElse: () => throw Exception('WTP layer not found'),
+        );
     debugPrint("checkFeatureInterceptWTP  $wtpLayer");
     // Create QueryParameters with spatial relationship 'intersects' and no geometry return
-    final queryParams = QueryParameters()
-      ..geometry = featureGeometry
-      ..spatialRelationship = SpatialRelationship.intersects
-      ..returnGeometry = false;
+    final queryParams =
+        QueryParameters()
+          ..geometry = featureGeometry
+          ..spatialRelationship = SpatialRelationship.intersects
+          ..returnGeometry = false;
     debugPrint("checkFeatureInterceptWTP queryParams $queryParams");
     // Use the featureTable from the layer, cast as ServiceFeatureTable
     ArcGISFeatureTable? featureTable;
-    if(wtpLayer.featureTable is ServiceFeatureTable)
-    {
+    if (wtpLayer.featureTable is ServiceFeatureTable) {
       featureTable = wtpLayer.featureTable as ServiceFeatureTable;
       debugPrint("checkFeatureInterceptWTP featureTable $featureTable");
-    }
-    else if(wtpLayer.featureTable is GeodatabaseFeatureTable)
-    {
+    } else if (wtpLayer.featureTable is GeodatabaseFeatureTable) {
       featureTable = wtpLayer.featureTable as GeodatabaseFeatureTable;
       debugPrint("checkFeatureInterceptWTP featureTable $featureTable");
     }
     // Perform the query on the feature table
     // final queryResult = await featureTable.queryFeatures(queryParams);
     FeatureQueryResult? queryResult;
-    if(featureTable is ServiceFeatureTable)
-    {
+    if (featureTable is ServiceFeatureTable) {
       queryResult = await featureTable.queryFeaturesWithFieldOptions(
-        parameters: queryParams, queryFeatureFields: QueryFeatureFields.loadAll, // Option to load all fields
+        parameters: queryParams,
+        queryFeatureFields:
+            QueryFeatureFields.loadAll, // Option to load all fields
       );
       debugPrint("checkFeatureInterceptWTP queryResult $queryResult");
-    }
-    else if(wtpLayer.featureTable is GeodatabaseFeatureTable)
-    {
-      queryResult = await (featureTable as GeodatabaseFeatureTable).queryFeatures(queryParams);
+    } else if (wtpLayer.featureTable is GeodatabaseFeatureTable) {
+      queryResult = await (featureTable as GeodatabaseFeatureTable)
+          .queryFeatures(queryParams);
       debugPrint("checkFeatureInterceptWTP queryResult $queryResult");
     }
-
 
     // Get the features from the query result
     final features = queryResult?.features();
-    debugPrint("checkFeatureInterceptWTP features.isNotEmpty ${features?.isNotEmpty}");
-    if (features!=null&& features.isNotEmpty) {
+    debugPrint(
+      "checkFeatureInterceptWTP features.isNotEmpty ${features?.isNotEmpty}",
+    );
+    if (features != null && features.isNotEmpty) {
       final firstFeature = features.first;
       return firstFeature;
-    }
-    else
-    {
-        return null;
+    } else {
+      return null;
     }
   }
+
   List<Map<String, dynamic>> schemeList = [];
-  Future<Map<String, dynamic>?> getSchemeNameFromExtent(Geometry? featureGeometry) async {
+
+  Future<Map<String, dynamic>?> getSchemeNameFromExtent(
+    Geometry? featureGeometry,
+  ) async {
     // Find the FeatureLayer named 'SchemeExtent' from the map's operational layers
     debugPrint("getSchemeNameFromExtent ");
     schemeList = [];
     final schemeExtentLayer = _map.operationalLayers
         .whereType<FeatureLayer>()
-        .firstWhere((layer) => layer.name == 'SchemeExtent', orElse: () => throw Exception('SchemeExtent layer not found'));
+        .firstWhere(
+          (layer) => layer.name == 'SchemeExtent',
+          orElse: () => throw Exception('SchemeExtent layer not found'),
+        );
     debugPrint("getSchemeNameFromExtent schemeExtentLayer $schemeExtentLayer");
     // Create QueryParameters with spatial relationship 'intersects' and no geometry return
-    final queryParams = QueryParameters()
-      ..geometry = featureGeometry
-      ..spatialRelationship = SpatialRelationship.intersects
-      ..returnGeometry = false;
+    final queryParams =
+        QueryParameters()
+          ..geometry = featureGeometry
+          ..spatialRelationship = SpatialRelationship.intersects
+          ..returnGeometry = false;
     debugPrint("getSchemeNameFromExtent queryParams $queryParams");
     // Use the featureTable from the layer, cast as ServiceFeatureTable
     ArcGISFeatureTable? featureTable;
-    if(schemeExtentLayer.featureTable is ServiceFeatureTable)
-    {
+    if (schemeExtentLayer.featureTable is ServiceFeatureTable) {
       featureTable = schemeExtentLayer.featureTable as ServiceFeatureTable;
       debugPrint("getSchemeNameFromExtent featureTable $featureTable");
-    }
-    else if(schemeExtentLayer.featureTable is GeodatabaseFeatureTable)
-    {
+    } else if (schemeExtentLayer.featureTable is GeodatabaseFeatureTable) {
       featureTable = schemeExtentLayer.featureTable as GeodatabaseFeatureTable;
       debugPrint("getSchemeNameFromExtent featureTable $featureTable");
     }
     // Perform the query on the feature table
     // final queryResult = await featureTable.queryFeatures(queryParams);
     FeatureQueryResult? queryResult;
-    if(featureTable is ServiceFeatureTable)
-    {
+    if (featureTable is ServiceFeatureTable) {
       queryResult = await featureTable.queryFeaturesWithFieldOptions(
-        parameters: queryParams, queryFeatureFields: QueryFeatureFields.loadAll, // Option to load all fields
+        parameters: queryParams,
+        queryFeatureFields:
+            QueryFeatureFields.loadAll, // Option to load all fields
       );
       debugPrint("getSchemeNameFromExtent queryResult $queryResult");
-    }
-    else if(schemeExtentLayer.featureTable is GeodatabaseFeatureTable)
-    {
-      queryResult = await (featureTable as GeodatabaseFeatureTable).queryFeatures(queryParams);
+    } else if (schemeExtentLayer.featureTable is GeodatabaseFeatureTable) {
+      queryResult = await (featureTable as GeodatabaseFeatureTable)
+          .queryFeatures(queryParams);
       debugPrint("getSchemeNameFromExtent queryResult $queryResult");
     }
-
 
     // Get the features from the query result
     final features = queryResult?.features();
-    debugPrint("getSchemeNameFromExtent features.isNotEmpty ${features?.isNotEmpty}");
-    if (features!=null&& features.isNotEmpty) {
+    debugPrint(
+      "getSchemeNameFromExtent features.isNotEmpty ${features?.isNotEmpty}",
+    );
+    if (features != null && features.isNotEmpty) {
       for (final f in features) {
         final attributes = f.attributes;
         final schemename = attributes['schemename']?.toString();
         final schemeid = attributes['schemeid'];
 
         if (schemename != null && schemeid != null) {
-          schemeList.add({
-            "schemeid": schemeid,
-            "schemename": schemename,
-          });
+          schemeList.add({"schemeid": schemeid, "schemename": schemename});
         }
       }
       final firstFeature = features.first;
@@ -1049,11 +1051,8 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits> with SampleStateS
     }
     return null;
   }
-
-
-
-
 }
+
 extension on String {
   // An extension on String to capitalize the first character of the String.
   String capitalize() {

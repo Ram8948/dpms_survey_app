@@ -27,10 +27,10 @@ class _OnlineOfflineModePageState extends State<OnlineOfflineModePage> {
     return Scaffold(
       extendBodyBehindAppBar: true,  // To allow gradient behind app bar
       appBar: AppBar(
-        title: const Text('Survey Mode'),
+        title: const Text('Survey Mode',style: TextStyle(color: Colors.white),),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.transparent, // Transparent app bar to show gradient behind
+        backgroundColor: Colors.black38, // Transparent app bar to show gradient behind
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -47,11 +47,18 @@ class _OnlineOfflineModePageState extends State<OnlineOfflineModePage> {
         ),
       ),
       body: Container(
+        // decoration: BoxDecoration(
+        //   gradient: LinearGradient(
+        //     colors: [Colors.blue.shade400, Colors.blue.shade700],
+        //     begin: Alignment.topLeft,
+        //     end: Alignment.bottomRight,
+        //   ),
+        // ),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue.shade400, Colors.blue.shade700],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+          image: DecorationImage(
+            image: AssetImage('assets/images/waterdrop_mobile.jpg'),
+            repeat: ImageRepeat.repeat,
+            // fit: BoxFit.cover, // Ensures image covers the container
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 32.0),

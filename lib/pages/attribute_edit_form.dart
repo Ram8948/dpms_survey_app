@@ -960,16 +960,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     debugPrint("1getRelatedFeatures");
     relatedTables = _mainFeatureTable?.getRelatedTables();
     debugPrint("relatedTables; ${relatedTables?.length}");
-    // for (final relatedTable in relatedTables!) {
-    //   print('Related table name: ${relatedTable.tableName}');
-    //   print('Related display name: ${relatedTable.displayName}');
-    //   print('Related display name: ${relatedTable.getRelatedTables()}');
-    //   for (final innerRelatedTable in relatedTable.getRelatedTables())
-    //   {
-    //     print('Related display name: ${innerRelatedTable.tableName}');
-    //   }
-    //   // You can create a ServiceFeatureTable for the related table by constructing its URL or using the map service's layer info
-    // }
 
     List<Feature> allRelatedFeatures = [];
 
@@ -1008,19 +998,28 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
   void initState() {
     super.initState();
     features = List.from(widget.relatedFeatures);
-
     final progressValues =
         features.map((feature) {
+          debugPrintLong("RelatedFeaturesTable feature.attributes ${feature.attributes}");
           final rawValue = feature.attributes['intpprogress'];
           return (rawValue != null) ? rawValue as int : 0;
         }).toList();
-
+    debugPrint("RelatedFeaturesTable progressValues $progressValues");
     maxPrevProgress =
         progressValues.isNotEmpty
             ? progressValues.reduce((a, b) => a > b ? a : b)
             : 0;
 
   }
+
+  void debugPrintLong(String message, {int chunkSize = 800}) {
+    final pattern = RegExp('.{1,$chunkSize}', dotAll: true);
+    pattern.allMatches(message).forEach((match) => debugPrint(match.group(0)));
+  }
+
+// Usage:
+
+
 
   @override
   Widget build(BuildContext context) {

@@ -89,11 +89,18 @@ class _LoginPageState extends State<LoginPage> {
 
     return Scaffold(
       body: Container(
+        // decoration: BoxDecoration(
+        //   gradient: LinearGradient(
+        //     colors: [Colors.blue.shade400, Colors.blue.shade700],
+        //     begin: Alignment.topLeft,
+        //     end: Alignment.bottomRight,
+        //   ),
+        // ),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue.shade400, Colors.blue.shade700],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+          image: DecorationImage(
+            image: AssetImage('assets/images/waterdrop_mobile.jpg'),
+            repeat: ImageRepeat.repeat,
+            // fit: BoxFit.cover, // Ensures image covers the container
           ),
         ),
         child: Center(

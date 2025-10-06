@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:arcgis_maps/arcgis_maps.dart';
 import 'package:dpmssurveyapp/pages/snap_geometry_edits.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import '../common/sample_state_support.dart';
 import 'attribute_edit_form.dart';
@@ -68,6 +69,18 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        iconTheme: IconThemeData(
+          color: Colors.white, // Set your desired color here
+        ),
+        title: const Text('Offline Survey',style: TextStyle(color: Colors.white),),
+        centerTitle: true,
+        backgroundColor: Colors.black38,
+        elevation: 0,
+        systemOverlayStyle:
+        SystemUiOverlayStyle.light, // For light status bar icons
+      ),
       body: SafeArea(
         top: false,
         left: false,
@@ -91,7 +104,7 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
                         child: IgnorePointer(
                           child: SafeArea(
                             child: Container(
-                              margin: const EdgeInsets.fromLTRB(30, 30, 30, 50),
+                              margin: const EdgeInsets.fromLTRB(10, 10, 10, 30),
                               child: Container(
                                 key: _outlineKey,
                                 decoration: BoxDecoration(
@@ -105,66 +118,47 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
                           ),
                         ),
                       ),
-                      // Add a red outline that marks the region to be taken offline.
-        // Visibility(
-        //   visible: _progress == null && !_offline && !_hasLocalMap,
-        //   child: IgnorePointer(
-        //     child: SafeArea(
-        //       child: LayoutBuilder(
-        //         builder: (context, constraints) {
-        //           // Optionally you can log or interact with the widget size here
-        //           final double containerSize = 200.0; // Or any dynamic size you want to use here
-        //
-        //           return Center(
-        //             child: Container(
-        //               key: _outlineKey,
-        //               width: containerSize,
-        //               height: containerSize,
-        //               decoration: BoxDecoration(
-        //                 border: Border.all(
-        //                   color: Colors.red,
-        //                   width: 2,
-        //                 ),
-        //               ),
-        //             ),
-        //           );
-        //         },
-        //       ),
-        //     ),
-        //   ),
-        // ),
                     ],
                   ),
                 ),
-                // Display the appropriate button based on map state
-                if (_hasLocalMap && !_offline)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      ElevatedButton(
-                        onPressed: loadLocalMap,
-                        child: const Text('Load Offline Map'),
-                      ),
-                      ElevatedButton(
-                        onPressed: downloadNewMap,
-                        child: const Text('Download New Map'),
-                      ),
-                    ],
-                  )
-                else if (!_offline && !_hasLocalMap)
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: _progress != null ? null : takeOffline,
-                      child: const Text('Take Map Offline'),
-                    ),
-                  )
-                else
-                  const SizedBox.shrink(), // No buttons if map is offline or downloading
               ],
             ),
             // Display a progress indicator and prevent interaction until state is ready.
             // LoadingIndicator(visible: !_ready),
             // Display a progress indicator and a cancel button during the offline map generation.
+            // Display the appropriate button based on map state
+            // Conditionally displayed buttons at the bottom
+            Positioned(
+              left: 0, right: 0, bottom: 32, // adjust bottom padding as needed
+              child: Builder(
+                builder: (_) {
+                  if (_hasLocalMap && !_offline) {
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        ElevatedButton(
+                          onPressed: loadLocalMap,
+                          child: const Text('Load Offline Map'),
+                        ),
+                        ElevatedButton(
+                          onPressed: downloadNewMap,
+                          child: const Text('Download New Map'),
+                        ),
+                      ],
+                    );
+                  } else if (!_offline && !_hasLocalMap) {
+                    return Center(
+                      child: ElevatedButton(
+                        onPressed: _progress != null ? null : takeOffline,
+                        child: const Text('Take Map Offline'),
+                      ),
+                    );
+                  } else {
+                    return const SizedBox.shrink();
+                  }
+                },
+              ),
+            ), // No buttons if map is offline or downloading
             Visibility(
               visible: _progress != null,
               child: Center(
@@ -196,7 +190,9 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
           ],
         ),
       ),
-      floatingActionButton: Column(
+      floatingActionButton: Padding(
+    padding: const EdgeInsets.only(bottom: 84.0),
+    child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           FloatingActionButton(
@@ -233,6 +229,7 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
           ),
         ],
       ),
+      )
     );
   }
 
