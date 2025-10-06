@@ -35,7 +35,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   List<Attachment> _attachments = [];
   List<File> _newAttachments = [];
   bool _attachmentsLoading = true;
-  List<Feature> _relatedFeatures = [];
+  List<ArcGISFeature> _relatedFeatures = [];
   bool _relatedFeaturesLoading = false;
   ArcGISFeatureTable? _mainFeatureTable;
   bool showAttachmentError = false;
@@ -434,7 +434,8 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       _relatedFeaturesLoading = true;
     });
     try {
-      final relatedFeatures = await getRelatedFeatures(widget.feature);
+      // final relatedFeatures = await getRelatedFeatures(widget.feature);
+      final relatedFeatures = await _queryRelatedFeatures(widget.feature);
       setState(() {
         _relatedFeatures = relatedFeatures;
         _relatedFeaturesLoading = false;
@@ -456,9 +457,10 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                           relatedFeatureTable: relatedTables!.first,
                           refreshParent: () async {
                             // Refresh list after CRUD
-                            final freshRelated = await getRelatedFeatures(
-                              widget.feature,
-                            );
+                            // final freshRelated = await getRelatedFeatures(
+                            //   widget.feature,
+                            // );
+                            final freshRelated = await _queryRelatedFeatures(widget.feature);
                             setState(() {
                               debugPrint(
                                 "refreshParent ${_relatedFeatures.length}",
@@ -877,7 +879,8 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         debugPrint(
           "arcGISFeatureTable.numberOfFeatures ${arcGISFeatureTable.numberOfFeatures}",
         );
-        final relatedFeatures = await getRelatedFeatures(widget.feature);
+        // final relatedFeatures = await getRelatedFeatures(widget.feature);
+        final relatedFeatures = await _queryRelatedFeatures(widget.feature);
         debugPrint("relatedFeatures $relatedFeatures");
         if (relatedFeatures.isEmpty) {
           final DateTime defaultDate = DateTime.now();
@@ -965,26 +968,129 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     }
   }
 
+
+
+  Future<List<ArcGISFeature>> _queryRelatedFeatures(ArcGISFeature feature) async {
+    List<ArcGISFeature> allRelatedFeatures = [];
+    try {
+      // Get the RelationshipInfo for the query
+      // This assumes the relationship is defined in the ServiceFeatureTable metadata
+
+      // Perform the query using your code snippet:
+      final relatedResults;
+      if(_mainFeatureTable is GeodatabaseFeatureTable)
+      {
+        final relationshipInfoList = (_mainFeatureTable as GeodatabaseFeatureTable).layerInfo?.relationshipInfos;
+        final relationshipInfo = relationshipInfoList?.firstWhere(
+              (info) => info.keyField == "GlobalID",
+          orElse: () => throw Exception('Relationship ID ${feature.attributes['globalid']} not found in layer info.'),
+        );
+
+        relatedResults = await (_mainFeatureTable as GeodatabaseFeatureTable)
+            .queryRelatedFeatures(
+          feature: feature,
+          parameters: RelatedQueryParameters.withRelationshipInfo(relationshipInfo!),
+        );
+      }
+      else
+      {
+        final relationshipInfoList = (_mainFeatureTable as ServiceFeatureTable).layerInfo?.relationshipInfos;
+        final relationshipInfo = relationshipInfoList?.firstWhere(
+              (info) => info.keyField == "GlobalID",
+          orElse: () => throw Exception('Relationship ID ${feature.attributes['globalid']} not found in layer info.'),
+        );
+
+        relatedResults = await (_mainFeatureTable as ServiceFeatureTable)
+            .queryRelatedFeaturesWithFieldOptions(
+          feature: feature,
+          queryFeatureFields: QueryFeatureFields.loadAll,
+          parameters: RelatedQueryParameters.withRelationshipInfo(relationshipInfo!),
+        );
+      }
+
+      // // 3. Process the results
+      // int totalRelatedFeatures = 0;
+      // final resultMessages = <String>[];
+
+      // for (final result in relatedResults) {
+      //   final relatedFeatureTable = result.relatedFeatureTable;
+      //   final relatedFeatures = await result.features().toList();
+      //   final count = relatedFeatures.length;
+      //   totalRelatedFeatures += count;
+      //
+      //   resultMessages.add(
+      //       'Table "${relatedFeatureTable.tableName}": $count related features found.'
+      //   );
+      //
+      //   // Example of accessing the first related feature's attributes
+      //   if (count > 0) {
+      //     final firstFeature = relatedFeatures.first;
+      //     final attributeKey = firstFeature.attributes.keys.firstWhere((k) => k.toLowerCase() != 'objectid', orElse: () => 'OBJECTID');
+      //     resultMessages.add('   - First related feature attribute ($attributeKey): ${firstFeature.attributes[attributeKey]}');
+      //   }
+      // }
+
+      for (final result in relatedResults) {
+        for (final feature in result.features()) {
+          final relatedFeature = feature as ArcGISFeature;
+          debugPrint("relatedFeature; $relatedFeature");
+          allRelatedFeatures.add(relatedFeature);
+        }
+      }
+      debugPrint("allRelatedFeatures; ${allRelatedFeatures.length}");
+      return allRelatedFeatures;
+
+      // setState(() {
+      //   _relatedFeaturesStatus =
+      //   'Query complete. Found $totalRelatedFeatures related feature(s):\n${resultMessages.join('\n')}';
+      // });
+    } catch (e) {
+      debugPrint("allRelatedFeatures; ${e.toString()}");
+      return allRelatedFeatures;
+      // setState(() {
+      //   _relatedFeaturesStatus = 'Error querying related features: $e';
+      // });
+    }
+
+  }
+
+
   List<ArcGISFeatureTable>? relatedTables;
 
-  Future<List<Feature>> getRelatedFeatures(ArcGISFeature feature) async {
-    debugPrint("getRelatedFeatures");
-    if (_mainFeatureTable == null) return [];
-    final relatedResults = await _mainFeatureTable!.queryRelatedFeatures(
-      feature: feature,
-    );
-    debugPrint("1getRelatedFeatures");
-    relatedTables = _mainFeatureTable?.getRelatedTables();
-    debugPrint("relatedTables; ${relatedTables?.length}");
-
-    List<Feature> allRelatedFeatures = [];
-
-    for (final result in relatedResults) {
-      debugPrint("result.features(); ${result.features()}");
-      allRelatedFeatures.addAll(result.features());
-    }
-    return allRelatedFeatures;
-  }
+  // Future<List<ArcGISFeature>> getRelatedFeatures(ArcGISFeature feature) async {
+  //   debugPrint("getRelatedFeatures");
+  //
+  //   if (_mainFeatureTable == null) return [];
+  //   final relatedResults;
+  //   if(_mainFeatureTable is GeodatabaseFeatureTable)
+  //   {
+  //     relatedResults = await (_mainFeatureTable! as GeodatabaseFeatureTable).queryRelatedFeatures(
+  //       feature: feature,
+  //     );
+  //   }
+  //   else
+  //   {
+  //       relatedResults = await (_mainFeatureTable! as ServiceFeatureTable).queryRelatedFeatures(
+  //         feature: feature,
+  //       );
+  //   }
+  //
+  //   debugPrint("1getRelatedFeatures");
+  //   relatedTables = _mainFeatureTable?.getRelatedTables();
+  //   debugPrint("relatedTables; ${relatedTables?.length}");
+  //
+  //   List<ArcGISFeature> allRelatedFeatures = [];
+  //
+  //   for (final result in relatedResults) {
+  //     for (final feature in result.features()) {
+  //       final relatedFeature = feature as ArcGISFeature;
+  //       debugPrint("relatedFeature; $relatedFeature");
+  //       allRelatedFeatures.add(relatedFeature);
+  //     }
+  //   }
+  //   debugPrint("allRelatedFeatures; ${allRelatedFeatures.length}");
+  //   return allRelatedFeatures;
+  // }
 }
 
 // class RelatedFeaturesTable extends StatefulWidget {
