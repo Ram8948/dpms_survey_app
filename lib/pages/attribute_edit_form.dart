@@ -529,7 +529,14 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     // Special case for "Scheme Name" label to show scheme dropdown
     if (label == "Scheme Name" && widget.schemeList.isNotEmpty) {
       String? selectedSchemeName = _editedAttributes[field.name];
-      int? selectedSchemeId = _editedAttributes["id"];
+      int? selectedSchemeId;
+      if (_editedAttributes["id"] is String) {
+        selectedSchemeId = int.tryParse(_editedAttributes["id"]) ?? 0;
+      }
+      else
+      {
+        selectedSchemeId = _editedAttributes["id"];
+      }
       debugPrint("selectedSchemeName $selectedSchemeName");
       debugPrint("selectedSchemeId $selectedSchemeId");
       return Card(
@@ -555,13 +562,22 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                 selectedSchemeName = newValue;
                 _editedAttributes[field.name] = newValue;
 
-                selectedSchemeId = widget.schemeList
+                var tempSchemeId = widget.schemeList
                     .firstWhere((scheme) => scheme['schemename'] == newValue)['schemeid'];
+
+                if (tempSchemeId is String) {
+                  selectedSchemeId = int.tryParse(tempSchemeId) ?? 0;
+                } else {
+                  selectedSchemeId = tempSchemeId;
+                }
+
                 _editedAttributes['id'] = selectedSchemeId;
                 schemeIdController.text = selectedSchemeId.toString();
+
                 debugPrint("selectedSchemeName $newValue");
                 debugPrint("selectedSchemeId $selectedSchemeId");
               });
+
             },
             validator: (val) {
               if (!field.nullable && (val == null || val.isEmpty)) {

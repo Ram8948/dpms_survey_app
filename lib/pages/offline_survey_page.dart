@@ -305,6 +305,21 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
 
       debugPrint("SyncJob $syncJob");
 
+      // Listen to progress optionally
+      syncJob.onProgressChanged.listen((progress) {
+        debugPrint("Sync progress: $progress%");
+        setState(() {
+          _progress = progress;
+          if(progress == 100)
+          {
+            setState(() {
+              _loadingFeature = false;
+              _progress = null;
+            });
+          }
+        });
+      });
+
       syncJob.onStatusChanged.listen((status) {
         debugPrint('Sync status: $status');
 
@@ -326,14 +341,6 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
             SnackBar(content: Text('Sync failed: ${syncJob.error?.message ?? 'Unknown error'}')),
           );
         }
-      });
-
-      // Listen to progress optionally
-      syncJob.onProgressChanged.listen((progress) {
-        debugPrint("Sync progress: $progress%");
-        setState(() {
-          _progress = progress;
-        });
       });
 
       syncJob.start();
