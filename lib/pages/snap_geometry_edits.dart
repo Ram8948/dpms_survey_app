@@ -363,6 +363,8 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
             showMessageDialog(
               'This feature can not be draw outside the WTP Layer',
             );
+            await _selectedtable!.deleteFeature(feature);
+            feature.refresh();
             return;
           }
         } else {
@@ -824,16 +826,18 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
       // Get the field name used for subtype
       final subtypeField = featureTable.subtypeField;
 
-      if (subtypeField != null && subtypeField.isNotEmpty) {
+      if (subtypeField.isNotEmpty) {
         // Get the subtype code from the feature's attributes
+        debugPrint("newFeature.attributes : ${newFeature.attributes}");
         final subtypeCode = newFeature.attributes[subtypeField];
-
+        debugPrint("subtypeCode : $subtypeCode");
         // Get the Subtype from the table definition
         try {
           return featureTable.featureSubtypes.firstWhere(
             (s) => s.code == subtypeCode,
           );
         } catch (e) {
+          debugPrint("ERROR : ${e.toString()}");
           return null;
         }
       }
@@ -882,6 +886,8 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
 
       // ——— FEATURE DEPENDENCY CHECK (Sequence) ———
       // Find index of new layer name, if > 0, its dependency is previous one in the list
+      debugPrint("wtpLayerNames $wtpLayerNames");
+      debugPrint("_selectedLayer!.name ${_selectedLayer!.name}");
       int currentIdx = wtpLayerNames.indexOf(_selectedLayer!.name);
       if (currentIdx > 0) {
         String requiredName = wtpLayerNames[currentIdx - 1];
@@ -890,11 +896,15 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
           showMessageDialog(
             'You need to add "$requiredName" first before "${_selectedLayer!.name}".',
           );
+          await _selectedtable!.deleteFeature(newFeature);
+          newFeature.refresh();
           return false;
         }
       }
 
       // // ——— SUBTYPE CHECK ———
+      debugPrint("wtpFeatureSubtype ${wtpFeatureSubtype}");
+      debugPrint("newFeatureSubtype ${newFeatureSubtype}");
       debugPrint("wtpFeatureSubtype!.name ${wtpFeatureSubtype!.name}");
       debugPrint("newFeatureSubtype!.name ${newFeatureSubtype!.name}");
       debugPrint("wtpFeatureSubtype!.name ${wtpFeatureSubtype.code}");
@@ -906,6 +916,8 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
           'Subtype mismatch. WTP layer has subtype: ${wtpFeatureSubtype!.name}.\n'
           'New feature subtype is: ${newFeatureSubtype!.name}',
         );
+        await _selectedtable!.deleteFeature(newFeature);
+        newFeature.refresh();
         return false;
       } else {
         debugPrint("Feature Subtype Match");
@@ -913,7 +925,10 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
       return true;
     } catch (e) {
       // Handle errors (query, dialog, etc.)
+      debugPrint('Error: ${e.toString()}');
       showMessageDialog('Error: ${e.toString()}');
+      await _selectedtable!.deleteFeature(newFeature);
+      newFeature.refresh();
       return false;
     }
   }

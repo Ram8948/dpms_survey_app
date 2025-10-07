@@ -63,6 +63,232 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
     });
   }
 
+  Future<void> _searchBySchemeName(String schemeName) async {
+    setState(() => _loadingFeature = true);
+    try {
+      final featureLayer = _map!.operationalLayers
+          .whereType<FeatureLayer>()
+          .firstWhere(
+            (layer) => layer.name == 'SchemeExtent',
+        orElse: () => throw Exception('SchemeExtent layer not found'),
+      );
+      debugPrint("_searchBySchemeName  featureLayer : ${featureLayer}");
+
+      // Use QueryParameters with case-insensitive SQL like for name
+      final queryParams = QueryParameters()
+        ..whereClause = "UPPER(schemename) LIKE UPPER('%$schemeName%')";
+
+      final queryResult = await featureLayer.featureTable!.queryFeatures(queryParams);
+      final features = queryResult.features().toList();
+
+      if (features.isEmpty) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('No features found.')));
+        return;
+      }
+      final geometries = features.first.geometry;
+
+      await _mapViewController.setViewpointGeometry(geometries!);
+      featureLayer.clearSelection();
+      featureLayer.selectFeatures(features.cast<ArcGISFeature>());
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      setState(() => _loadingFeature = false);
+    }
+  }
+
+  Future<void> _searchBySchemeId(String schemeId) async {
+    setState(() => _loadingFeature = true);
+    try {
+      final featureLayer = _map!.operationalLayers
+          .whereType<FeatureLayer>()
+          .firstWhere(
+            (layer) => layer.name == 'SchemeExtent',
+        orElse: () => throw Exception('SchemeExtent layer not found'),
+      );
+      debugPrint("_searchBySchemeId  featureLayer : ${featureLayer}");
+      // final queryParams = QueryParameters(queryWhere: "schemeid = $schemeId");
+      final queryParams = QueryParameters()
+        ..whereClause = "schemeid = $schemeId";
+      final queryResult = await featureLayer.featureTable!.queryFeatures(queryParams);
+      final features = queryResult.features().toList();
+      if (features.isEmpty) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('No features found.')));
+        return;
+      }
+      final geometries = features.first.geometry;
+
+      await _mapViewController.setViewpointGeometry(geometries!);
+      featureLayer.clearSelection();
+      featureLayer.selectFeatures(features.cast<ArcGISFeature>());
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      setState(() => _loadingFeature = false);
+    }
+  }
+
+  Future<void> _searchByObjectId(String objectId, String layerName) async {
+    debugPrint("objectId $objectId layerName $layerName");
+    setState(() => _loadingFeature = true);
+    try {
+      final featureLayer = _map!.operationalLayers
+          .whereType<FeatureLayer>()
+          .firstWhere(
+            (layer) => layer.name == layerName,
+        orElse: () => throw Exception('$layerName layer not found'),
+      );
+
+      final queryParams = QueryParameters()
+        ..whereClause = "objectid = $objectId";
+
+      final queryResult = await featureLayer.featureTable!.queryFeatures(queryParams);
+
+      final features = queryResult.features().toList();
+
+      if (features.isEmpty) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('No features found.')));
+        return;
+      }
+
+      final geometry = features.first.geometry;
+
+      await _mapViewController.setViewpointGeometry(geometry!);
+
+      featureLayer.clearSelection();
+      featureLayer.selectFeatures(features.cast<ArcGISFeature>());
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      setState(() => _loadingFeature = false);
+    }
+  }
+
+  Future<void> _showSearchDialog() async {
+    final layers = _map!.operationalLayers.whereType<FeatureLayer>().toList();
+    String? selectedLayerName = layers.isNotEmpty ? layers[0].name : null;
+    final TextEditingController idController = TextEditingController();
+    String searchType = 'Scheme ID'; // or 'Object ID'
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Search Features', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // SegmentedButton<String>(
+                    //   segments: const <ButtonSegment<String>>[
+                    //     ButtonSegment(value: 'Scheme ID', label: Text('Scheme ID')),
+                    //     ButtonSegment(value: 'Object ID', label: Text('Object ID')),
+                    //   ],
+                    //   selected: <String>{searchType},
+                    //   onSelectionChanged: (Set<String> newSelection) {
+                    //     if (newSelection.isNotEmpty) {
+                    //       setState(() {
+                    //         searchType = newSelection.first;
+                    //       });
+                    //     }
+                    //   },
+                    // ),
+                    SegmentedButton<String>(
+                      segments: const <ButtonSegment<String>>[
+                        ButtonSegment(value: 'Scheme ID', label: Text('Scheme ID')),
+                        ButtonSegment(value: 'Scheme Name', label: Text('Scheme Name')),
+                        ButtonSegment(value: 'Object ID', label: Text('Object ID')),
+                      ],
+                      selected: <String>{searchType},
+                      onSelectionChanged: (Set<String> newSelection) {
+                        if (newSelection.isNotEmpty) {
+                          setState(() {
+                            searchType = newSelection.first;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    if (searchType == 'Object ID')
+                      DropdownButtonFormField<String>(
+                        value: selectedLayerName,
+                        decoration: InputDecoration(
+                          labelText: 'Select Layer',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        isExpanded: true,
+                        onChanged: (val) => setState(() => selectedLayerName = val),
+                        items: layers.map((layer) {
+                          return DropdownMenuItem<String>(
+                            value: layer.name,
+                            child: Text(layer.name),
+                          );
+                        }).toList(),
+                      ),
+                    if (searchType == 'Object ID')
+                      const SizedBox(height: 20),
+                    TextField(
+                      controller: idController,
+                      keyboardType: (searchType == 'Scheme ID') ? TextInputType.number : TextInputType.text,
+                      decoration: InputDecoration(
+                        labelText: 'Enter $searchType',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(fontSize: 16)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    final id = idController.text.trim();
+                    if (id.isEmpty) return;
+
+                    if (searchType == 'Scheme ID') {
+                      await _searchBySchemeId(id);
+                    } else if(searchType == 'Scheme Name') {
+                      await _searchBySchemeName(id);
+                    } else if (searchType == 'Object ID' && selectedLayerName != null) {
+                      await _searchByObjectId(id, selectedLayerName!);
+                    }
+                  },
+                  child: const Text('Search', style: TextStyle(fontSize: 16)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,6 +303,14 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
         elevation: 0,
         systemOverlayStyle:
         SystemUiOverlayStyle.light, // For light status bar icons
+        actions: [
+            IconButton(
+              icon: Icon(Icons.search, color: Colors.white),
+              onPressed: () async {
+                _showSearchDialog();
+              },
+            ),
+          ],
       ),
       body: SafeArea(
         top: false,
@@ -381,6 +615,7 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
 
   Future<void> _handleMapTap(Offset screenPoint) async {
     debugPrint("_handleMapTap map : $screenPoint");
+    debugPrint("_handleMapTap map _selectedFeatureLayer : $_selectedFeatureLayer");
     setState(() => _loadingFeature = true);
     try {
       if (_selectedFeatureLayer != null) {

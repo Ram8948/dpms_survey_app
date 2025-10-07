@@ -42,6 +42,11 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   int initProgress = 0;
   bool isSaving = false;
 
+  void debugPrintLong(String message, {int chunkSize = 800}) {
+    final pattern = RegExp('.{1,$chunkSize}', dotAll: true);
+    pattern.allMatches(message).forEach((match) => debugPrint(match.group(0)));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -59,7 +64,8 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         (entry) => popupFieldNames.contains(entry.key.toLowerCase()),
       ),
     );
-    debugPrint("_editedAttributes ${widget.feature.attributes}");
+    debugPrintLong("_editedAttributes ${widget.feature.attributes}");
+    debugPrintLong("_editedAttributes objectid ${widget.feature.attributes["objectid"]}");
     debugPrint("_editedAttributes $_editedAttributes");
     debugPrint("widget.feature.featureTable ${widget.feature.featureTable}");
     if (widget.feature.featureTable is ServiceFeatureTable) {
@@ -148,7 +154,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         widget.featureTable.layerInfo?.serviceLayerName ?? 'Feature Layer';
     return layerName;
   }
-
+  final ScrollController scrollController = ScrollController();
   @override
   Widget build(BuildContext context) {
     final popupFields = widget.featurePopup.popupDefinition.fields.where(
@@ -185,6 +191,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
           top: 10,
         ),
         child: SingleChildScrollView(
+          controller: scrollController,
           child: Form(
             key: _formKey,
             child: Column(
@@ -202,81 +209,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                     .map((field) => _buildFieldCard(field, popupFieldList))
                     .toList(),
                 const SizedBox(height: 18),
-                // Card(
-                //   margin: const EdgeInsets.symmetric(vertical: 5),
-                //   child: Padding(
-                //     padding: const EdgeInsets.all(12),
-                //     child: Column(
-                //       crossAxisAlignment: CrossAxisAlignment.start,
-                //       children: [
-                //         Text(
-                //           "Attachments",
-                //           style: Theme.of(context)
-                //               .textTheme
-                //               .titleMedium
-                //               ?.copyWith(fontWeight: FontWeight.bold),
-                //         ),
-                //         const SizedBox(height: 6),
-                //         if (_attachmentsLoading) ...[
-                //           const Center(
-                //               child: Padding(
-                //                 padding: EdgeInsets.all(8),
-                //                 child: CircularProgressIndicator(),
-                //               )),
-                //         ] else ...[
-                //           Column(
-                //             children: [
-                //               ..._attachments.map((attachment) {
-                //                 return ListTile(
-                //                   dense: true,
-                //                   contentPadding: EdgeInsets.zero,
-                //                   leading: const Icon(Icons.attach_file),
-                //                   title:
-                //                   Text(attachment.name, overflow: TextOverflow.ellipsis),
-                //                   trailing: IconButton(
-                //                     icon: const Icon(Icons.delete, color: Colors.red),
-                //                     onPressed: () => _deleteAttachment(attachment),
-                //                   ),
-                //                   onTap: () {
-                //                     ScaffoldMessenger.of(context).showSnackBar(
-                //                       SnackBar(
-                //                           content: Text(
-                //                               'Open attachment: ${attachment.name}')),
-                //                     );
-                //                   },
-                //                 );
-                //               }),
-                //               ..._newAttachments.asMap().entries.map((entry) {
-                //                 int idx = entry.key;
-                //                 File file = entry.value;
-                //                 return ListTile(
-                //                   dense: true,
-                //                   contentPadding: EdgeInsets.zero,
-                //                   leading: const Icon(Icons.insert_drive_file),
-                //                   title:
-                //                   Text(file.path.split('/').last, overflow: TextOverflow.ellipsis),
-                //                   trailing: IconButton(
-                //                     icon: const Icon(Icons.remove_circle, color: Colors.red),
-                //                     onPressed: () => _removeNewAttachment(idx),
-                //                   ),
-                //                 );
-                //               }),
-                //               const SizedBox(height: 4),
-                //               Align(
-                //                 alignment: Alignment.centerRight,
-                //                 child: ElevatedButton.icon(
-                //                   icon: const Icon(Icons.add),
-                //                   label: const Text('Add Attachment'),
-                //                   onPressed: _addAttachment,
-                //                 ),
-                //               )
-                //             ],
-                //           ),
-                //         ],
-                //       ],
-                //     ),
-                //   ),
-                // ),
                 if (widget.featureTable.layerInfo?.serviceLayerName != 'WTP')
                 Card(
                   margin: const EdgeInsets.symmetric(vertical: 5),
@@ -768,6 +700,13 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     // Show progress
     setState(() {
       isSaving = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        scrollController.animateTo(
+          scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 400),
+          curve: Curves.easeOut,
+        );
+      });
     });
     debugPrint(
       "_saveAttributes1 _attachments.isEmpty ${_attachments.isEmpty} _newAttachments.isEmpty ${_newAttachments.isEmpty}",
@@ -1133,16 +1072,10 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
             : 0;
 
   }
-
   void debugPrintLong(String message, {int chunkSize = 800}) {
     final pattern = RegExp('.{1,$chunkSize}', dotAll: true);
     pattern.allMatches(message).forEach((match) => debugPrint(match.group(0)));
   }
-
-// Usage:
-
-
-
   @override
   Widget build(BuildContext context) {
     if (features.isEmpty) {
