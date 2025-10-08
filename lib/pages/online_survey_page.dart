@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:arcgis_maps/arcgis_maps.dart';
+import 'package:arcgis_maps_toolkit/arcgis_maps_toolkit.dart';
 import 'package:dpmssurveyapp/common/sample_state_support.dart';
 import 'package:dpmssurveyapp/pages/snap_geometry_edits.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +36,16 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
     _loadMap();
   }
 
+  @override
+  void dispose() {
+    // When exiting, stop the location data source and cancel subscriptions.
+    _locationDataSource.stop();
+    _statusSubscription?.cancel();
+    _autoPanModeSubscription?.cancel();
+
+    super.dispose();
+  }
+
   Future<void> _loadMap() async {
     debugPrint("_loadMap : ${widget.portalUri}");
     final portal = Portal(
@@ -54,18 +68,68 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
     if (mounted) {
       debugPrint("_loadMap map : ${_map}");
       _mapViewController.arcGISMap = _map;
+      // Start device location display here
+      _initializeLocation();
     }
+  }
+
+  // Create the system location data source.
+  final _locationDataSource = SystemLocationDataSource();
+
+  // A subscription to receive status changes of the location data source.
+  StreamSubscription? _statusSubscription;
+  var _status = LocationDataSourceStatus.stopped;
+
+  // A subscription to receive changes to the auto-pan mode.
+  StreamSubscription? _autoPanModeSubscription;
+  var _autoPanMode = LocationDisplayAutoPanMode.recenter;
+
+  // late ArcGISPoint? _currentLocation;
+
+  Future<void> _initializeLocation() async {
+      _mapViewController.locationDisplay.dataSource = _locationDataSource;
+      _mapViewController.locationDisplay.autoPanMode =
+          LocationDisplayAutoPanMode.recenter;
+
+      // Subscribe to status changes and changes to the auto-pan mode.
+      _statusSubscription = _locationDataSource.onStatusChanged.listen((status) {
+        setState(() => _status = status);
+      });
+      setState(() => _status = _locationDataSource.status);
+      _autoPanModeSubscription = _mapViewController
+          .locationDisplay
+          .onAutoPanModeChanged
+          .listen((mode) {
+        setState(() => _autoPanMode = mode);
+      });
+      setState(
+            () {
+                  _autoPanMode = _mapViewController.locationDisplay.autoPanMode;;
+                  // _currentLocation = _mapViewController.locationDisplay.mapLocation;
+                }
+      );
+
+      // Attempt to start the location data source (this will prompt the user for permission).
+      try {
+        await _locationDataSource.start();
+      } on ArcGISException catch (e) {
+        showMessageDialog(e.message);
+      }
   }
 
   Future<void> _searchBySchemeName(String schemeName) async {
     setState(() => _loadingFeature = true);
     try {
+      if (_selectedFeatureLayer != null) {
+        _selectedFeatureLayer!.clearSelection();
+      }
       final featureLayer = _map!.operationalLayers
           .whereType<FeatureLayer>()
           .firstWhere(
             (layer) => layer.name == 'SchemeExtent',
         orElse: () => throw Exception('SchemeExtent layer not found'),
       );
+      _selectedFeatureLayer = featureLayer;
       debugPrint("_searchBySchemeName  featureLayer : ${featureLayer}");
 
       // Use QueryParameters with case-insensitive SQL like for name
@@ -95,6 +159,9 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
 
   Future<void> _searchBySchemeId(String schemeId) async {
     setState(() => _loadingFeature = true);
+    if (_selectedFeatureLayer != null) {
+      _selectedFeatureLayer!.clearSelection();
+    }
     try {
       final featureLayer = _map!.operationalLayers
           .whereType<FeatureLayer>()
@@ -102,6 +169,7 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
             (layer) => layer.name == 'SchemeExtent',
         orElse: () => throw Exception('SchemeExtent layer not found'),
       );
+      _selectedFeatureLayer = featureLayer;
       debugPrint("_searchBySchemeId  featureLayer : ${featureLayer}");
       // final queryParams = QueryParameters(queryWhere: "schemeid = $schemeId");
       final queryParams = QueryParameters()
@@ -129,6 +197,9 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
   Future<void> _searchByObjectId(String objectId, String layerName) async {
     debugPrint("objectId $objectId layerName $layerName");
     setState(() => _loadingFeature = true);
+    if (_selectedFeatureLayer != null) {
+      _selectedFeatureLayer!.clearSelection();
+    }
     try {
       final featureLayer = _map!.operationalLayers
           .whereType<FeatureLayer>()
@@ -136,7 +207,7 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
             (layer) => layer.name == layerName,
         orElse: () => throw Exception('$layerName layer not found'),
       );
-
+      _selectedFeatureLayer = featureLayer;
       final queryParams = QueryParameters()
         ..whereClause = "objectid = $objectId";
 
@@ -311,6 +382,15 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
             controllerProvider: () => _mapViewController,
             onTap: _handleMapTap,
           ),
+          Compass(
+            controllerProvider: () => _mapViewController,
+            alignment: Alignment.topRight, // Position at top-right
+            padding: const EdgeInsets.fromLTRB(0, 95, 10, 0),
+            size: 50, // Diameter of compass icon
+            automaticallyHides: true, // Hide if not rotated
+            // Optionally provide a custom icon:
+            // iconBuilder: (context, size, angleRadians) => YourCustomIcon(...),
+          ),
           if (_loadingFeature)
             Container(
               color: Colors.black45,
@@ -357,6 +437,20 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
     debugPrint("_handleMapTap map _selectedFeatureLayer : $_selectedFeatureLayer");
     setState(() => _loadingFeature = true);
     try {
+      ArcGISPoint? mapPoint = await _mapViewController.screenToLocation(screen: screenPoint);
+      ArcGISPoint? currentLocation = _mapViewController.locationDisplay.mapLocation;
+      if (mapPoint != null && currentLocation != null) {
+        double distance = await calculateDistanceBetweenPoints(currentLocation: currentLocation, tappedPoint: mapPoint);
+        if(distance>20)
+        {
+          showMessageDialog("You are not within the range of 20 Meter");
+          return;
+        }
+        {
+          showMessageDialog("You are within the range of 20 Meter");
+        }
+      }
+
       if (_selectedFeatureLayer != null) {
         _selectedFeatureLayer!.clearSelection();
       }

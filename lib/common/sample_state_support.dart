@@ -157,4 +157,33 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
       ),
     );
   }
+
+  Future<double> calculateDistanceBetweenPoints({
+    required ArcGISPoint currentLocation,
+    required ArcGISPoint tappedPoint,
+    LinearUnit? distanceUnit,
+    AngularUnit? azimuthUnit,
+    GeodeticCurveType curveType = GeodeticCurveType.geodesic,
+  }) async {
+    try {
+      distanceUnit ??= LinearUnit(unitId: LinearUnitId.meters);
+      azimuthUnit ??= AngularUnit(unitId: AngularUnitId.degrees);
+      // Call the distanceGeodetic function with given parameters
+      GeodeticDistanceResult result = GeometryEngine.distanceGeodetic(
+        point1: currentLocation,
+        point2: tappedPoint,
+        distanceUnit: distanceUnit,
+        azimuthUnit: azimuthUnit,
+        curveType: curveType,
+      );
+
+      // Return the distance value from the result
+      debugPrint("Calculated distance : ${result.distance}");
+      return result.distance;
+    } catch (e) {
+      debugPrint('Error calculating geodetic distance: $e');
+      return 0;
+    }
+  }
+
 }

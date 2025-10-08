@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:arcgis_maps/arcgis_maps.dart';
+import 'package:arcgis_maps_toolkit/arcgis_maps_toolkit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -55,6 +58,246 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
   var _snapSettingsVisible = false;
   late ArcGISMap _map;
 
+  bool _loadingFeature = false;
+  FeatureLayer? _selectedFeatureLayer;
+
+  Future<void> _searchBySchemeName(String schemeName) async {
+    setState(() => _loadingFeature = true);
+    try {
+      if (_selectedFeatureLayer != null) {
+        _selectedFeatureLayer!.clearSelection();
+      }
+      final featureLayer = _map!.operationalLayers
+          .whereType<FeatureLayer>()
+          .firstWhere(
+            (layer) => layer.name == 'SchemeExtent',
+        orElse: () => throw Exception('SchemeExtent layer not found'),
+      );
+      _selectedFeatureLayer = featureLayer;
+      debugPrint("_searchBySchemeName  featureLayer : ${featureLayer}");
+
+      // Use QueryParameters with case-insensitive SQL like for name
+      final queryParams = QueryParameters()
+        ..whereClause = "UPPER(schemename) LIKE UPPER('%$schemeName%')";
+
+      final queryResult = await featureLayer.featureTable!.queryFeatures(queryParams);
+      final features = queryResult.features().toList();
+
+      if (features.isEmpty) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('No features found.')));
+        return;
+      }
+      final geometries = features.first.geometry;
+
+      await _mapViewController.setViewpointGeometry(geometries!);
+      featureLayer.clearSelection();
+      featureLayer.selectFeatures(features.cast<ArcGISFeature>());
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      setState(() => _loadingFeature = false);
+    }
+  }
+
+  Future<void> _searchBySchemeId(String schemeId) async {
+    setState(() => _loadingFeature = true);
+    try {
+      if (_selectedFeatureLayer != null) {
+        _selectedFeatureLayer!.clearSelection();
+      }
+      final featureLayer = _map!.operationalLayers
+          .whereType<FeatureLayer>()
+          .firstWhere(
+            (layer) => layer.name == 'SchemeExtent',
+        orElse: () => throw Exception('SchemeExtent layer not found'),
+      );
+      _selectedFeatureLayer = featureLayer;
+      debugPrint("_searchBySchemeId  featureLayer : ${featureLayer}");
+      // final queryParams = QueryParameters(queryWhere: "schemeid = $schemeId");
+      final queryParams = QueryParameters()
+        ..whereClause = "schemeid = $schemeId";
+      final queryResult = await featureLayer.featureTable!.queryFeatures(queryParams);
+      final features = queryResult.features().toList();
+      if (features.isEmpty) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('No features found.')));
+        return;
+      }
+      final geometries = features.first.geometry;
+
+      await _mapViewController.setViewpointGeometry(geometries!);
+      featureLayer.clearSelection();
+      featureLayer.selectFeatures(features.cast<ArcGISFeature>());
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      setState(() => _loadingFeature = false);
+    }
+  }
+
+  Future<void> _searchByObjectId(String objectId, String layerName) async {
+    debugPrint("objectId $objectId layerName $layerName");
+    setState(() => _loadingFeature = true);
+    try {
+      if (_selectedFeatureLayer != null) {
+        _selectedFeatureLayer!.clearSelection();
+      }
+      final featureLayer = _map!.operationalLayers
+          .whereType<FeatureLayer>()
+          .firstWhere(
+            (layer) => layer.name == layerName,
+        orElse: () => throw Exception('$layerName layer not found'),
+      );
+      _selectedFeatureLayer = featureLayer;
+      final queryParams = QueryParameters()
+        ..whereClause = "objectid = $objectId";
+
+      final queryResult = await featureLayer.featureTable!.queryFeatures(queryParams);
+
+      final features = queryResult.features().toList();
+
+      if (features.isEmpty) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('No features found.')));
+        return;
+      }
+
+      final geometry = features.first.geometry;
+
+      await _mapViewController.setViewpointGeometry(geometry!);
+
+      featureLayer.clearSelection();
+      featureLayer.selectFeatures(features.cast<ArcGISFeature>());
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      setState(() => _loadingFeature = false);
+    }
+  }
+
+  Future<void> _showSearchDialog() async {
+    final layers = _map!.operationalLayers.whereType<FeatureLayer>().toList();
+    String? selectedLayerName = layers.isNotEmpty ? layers[0].name : null;
+    final TextEditingController idController = TextEditingController();
+    String searchType = 'Scheme ID'; // or 'Object ID'
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Search Features', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // SegmentedButton<String>(
+                    //   segments: const <ButtonSegment<String>>[
+                    //     ButtonSegment(value: 'Scheme ID', label: Text('Scheme ID')),
+                    //     ButtonSegment(value: 'Object ID', label: Text('Object ID')),
+                    //   ],
+                    //   selected: <String>{searchType},
+                    //   onSelectionChanged: (Set<String> newSelection) {
+                    //     if (newSelection.isNotEmpty) {
+                    //       setState(() {
+                    //         searchType = newSelection.first;
+                    //       });
+                    //     }
+                    //   },
+                    // ),
+                    SegmentedButton<String>(
+                      segments: const <ButtonSegment<String>>[
+                        ButtonSegment(value: 'Scheme ID', label: Text('Scheme ID')),
+                        ButtonSegment(value: 'Scheme Name', label: Text('Scheme Name')),
+                        ButtonSegment(value: 'Object ID', label: Text('Object ID')),
+                      ],
+                      selected: <String>{searchType},
+                      onSelectionChanged: (Set<String> newSelection) {
+                        if (newSelection.isNotEmpty) {
+                          setState(() {
+                            searchType = newSelection.first;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    if (searchType == 'Object ID')
+                      DropdownButtonFormField<String>(
+                        value: selectedLayerName,
+                        decoration: InputDecoration(
+                          labelText: 'Select Layer',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        isExpanded: true,
+                        onChanged: (val) => setState(() => selectedLayerName = val),
+                        items: layers.map((layer) {
+                          return DropdownMenuItem<String>(
+                            value: layer.name,
+                            child: Text(layer.name),
+                          );
+                        }).toList(),
+                      ),
+                    if (searchType == 'Object ID')
+                      const SizedBox(height: 20),
+                    TextField(
+                      controller: idController,
+                      keyboardType: (searchType == 'Scheme ID') ? TextInputType.number : TextInputType.text,
+                      decoration: InputDecoration(
+                        labelText: 'Enter $searchType',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(fontSize: 16)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    final id = idController.text.trim();
+                    if (id.isEmpty) return;
+
+                    if (searchType == 'Scheme ID') {
+                      await _searchBySchemeId(id);
+                    } else if(searchType == 'Scheme Name') {
+                      await _searchBySchemeName(id);
+                    } else if (searchType == 'Object ID' && selectedLayerName != null) {
+                      await _searchByObjectId(id, selectedLayerName!);
+                    }
+                  },
+                  child: const Text('Search', style: TextStyle(fontSize: 16)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -71,7 +314,15 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
         backgroundColor: Colors.black38,
         elevation: 0,
         systemOverlayStyle:
-            SystemUiOverlayStyle.light, // For light status bar icons
+        SystemUiOverlayStyle.light,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.search, color: Colors.white),
+            onPressed: () async {
+              _showSearchDialog();
+            },
+          ),
+        ],// For light status bar icons
       ),
       body: SafeArea(
         top: false,
@@ -89,9 +340,23 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
                 buildBottomMenu(),
               ],
             ),
+            Compass(
+              controllerProvider: () => _mapViewController,
+              alignment: Alignment.topRight, // Position at top-right
+              padding: const EdgeInsets.fromLTRB(0, 95, 10, 0),
+              size: 50, // Diameter of compass icon
+              automaticallyHides: true, // Hide if not rotated
+              // Optionally provide a custom icon:
+              // iconBuilder: (context, size, angleRadians) => YourCustomIcon(...),
+            ),
             if (_showEditToolbar)
               Positioned(bottom: 120, right: 5, child: buildEditingToolbar()),
             if (_snapSettingsVisible) buildSnapSettings(context),
+            if (_loadingFeature)
+              Container(
+                color: Colors.black45,
+                child: const Center(child: CircularProgressIndicator()),
+              ),
           ],
         ),
       ),
@@ -146,6 +411,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
       }
     }
     _mapViewController.setViewpoint(widget.viewPoint);
+    _initializeLocation();
     _map.loadSettings.featureTilingMode =
         FeatureTilingMode.enabledWithFullResolutionWhenSupported;
     // Add the graphics overlay to the map view.
@@ -215,9 +481,72 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
     setState(() => _ready = true);
   }
 
+  // Create the system location data source.
+  final _locationDataSource = SystemLocationDataSource();
+
+  // A subscription to receive status changes of the location data source.
+  StreamSubscription? _statusSubscription;
+  var _status = LocationDataSourceStatus.stopped;
+
+  // A subscription to receive changes to the auto-pan mode.
+  StreamSubscription? _autoPanModeSubscription;
+  var _autoPanMode = LocationDisplayAutoPanMode.recenter;
+
+  Future<void> _initializeLocation() async {
+    _mapViewController.locationDisplay.dataSource = _locationDataSource;
+    _mapViewController.locationDisplay.autoPanMode =
+        LocationDisplayAutoPanMode.recenter;
+
+    // Subscribe to status changes and changes to the auto-pan mode.
+    _statusSubscription = _locationDataSource.onStatusChanged.listen((status) {
+      setState(() => _status = status);
+    });
+    setState(() => _status = _locationDataSource.status);
+    _autoPanModeSubscription = _mapViewController
+        .locationDisplay
+        .onAutoPanModeChanged
+        .listen((mode) {
+      setState(() => _autoPanMode = mode);
+    });
+    setState(
+          () => _autoPanMode = _mapViewController.locationDisplay.autoPanMode,
+    );
+
+    // Attempt to start the location data source (this will prompt the user for permission).
+    try {
+      await _locationDataSource.start();
+    } on ArcGISException catch (e) {
+      showMessageDialog(e.message);
+    }
+  }
+
+  @override
+  void dispose() {
+    // When exiting, stop the location data source and cancel subscriptions.
+    _locationDataSource.stop();
+    _statusSubscription?.cancel();
+    _autoPanModeSubscription?.cancel();
+
+    super.dispose();
+  }
+
   Future<void> onTap(Offset localPosition) async {
     // Perform an identify operation on the graphics overlay at the tapped location.
     debugPrint("onTap ${_selectedLayer!.name}");
+    ArcGISPoint? mapPoint = await _mapViewController.screenToLocation(screen: localPosition);
+    ArcGISPoint? currentLocation = _mapViewController.locationDisplay.mapLocation;
+    if (mapPoint != null && currentLocation != null) {
+      double distance = await calculateDistanceBetweenPoints(currentLocation: currentLocation, tappedPoint: mapPoint);
+      if(distance>20)
+      {
+        showMessageDialog("You are not within the range of 20 Meter");
+        return;
+      }
+      {
+        showMessageDialog("You are within the range of 20 Meter");
+      }
+    }
+
     final identifyResult = await _mapViewController.identifyGraphicsOverlay(
       _graphicsOverlay,
       screenPoint: localPosition,

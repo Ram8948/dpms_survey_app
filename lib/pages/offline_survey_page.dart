@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:arcgis_maps/arcgis_maps.dart';
+import 'package:arcgis_maps_toolkit/arcgis_maps_toolkit.dart';
 import 'package:dpmssurveyapp/pages/snap_geometry_edits.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,6 +55,16 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
     _checkLocalMap();
   }
 
+  @override
+  void dispose() {
+    // When exiting, stop the location data source and cancel subscriptions.
+    _locationDataSource.stop();
+    _statusSubscription?.cancel();
+    _autoPanModeSubscription?.cancel();
+
+    super.dispose();
+  }
+
   Future<void> _checkLocalMap() async {
     final documentsUri = (await getApplicationDocumentsDirectory()).uri;
     final localMapDirectory = Directory.fromUri(
@@ -66,12 +78,16 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
   Future<void> _searchBySchemeName(String schemeName) async {
     setState(() => _loadingFeature = true);
     try {
+      if (_selectedFeatureLayer != null) {
+        _selectedFeatureLayer!.clearSelection();
+      }
       final featureLayer = _map!.operationalLayers
           .whereType<FeatureLayer>()
           .firstWhere(
             (layer) => layer.name == 'SchemeExtent',
         orElse: () => throw Exception('SchemeExtent layer not found'),
       );
+      _selectedFeatureLayer = featureLayer;
       debugPrint("_searchBySchemeName  featureLayer : ${featureLayer}");
 
       // Use QueryParameters with case-insensitive SQL like for name
@@ -102,12 +118,16 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
   Future<void> _searchBySchemeId(String schemeId) async {
     setState(() => _loadingFeature = true);
     try {
+      if (_selectedFeatureLayer != null) {
+        _selectedFeatureLayer!.clearSelection();
+      }
       final featureLayer = _map!.operationalLayers
           .whereType<FeatureLayer>()
           .firstWhere(
             (layer) => layer.name == 'SchemeExtent',
         orElse: () => throw Exception('SchemeExtent layer not found'),
       );
+      _selectedFeatureLayer = featureLayer;
       debugPrint("_searchBySchemeId  featureLayer : ${featureLayer}");
       // final queryParams = QueryParameters(queryWhere: "schemeid = $schemeId");
       final queryParams = QueryParameters()
@@ -136,13 +156,16 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
     debugPrint("objectId $objectId layerName $layerName");
     setState(() => _loadingFeature = true);
     try {
+      if (_selectedFeatureLayer != null) {
+        _selectedFeatureLayer!.clearSelection();
+      }
       final featureLayer = _map!.operationalLayers
           .whereType<FeatureLayer>()
           .firstWhere(
             (layer) => layer.name == layerName,
         orElse: () => throw Exception('$layerName layer not found'),
       );
-
+      _selectedFeatureLayer = featureLayer;
       final queryParams = QueryParameters()
         ..whereClause = "objectid = $objectId";
 
@@ -330,6 +353,15 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
                         onMapViewReady: onMapViewReady,
                         onTap: _handleMapTap,
                       ),
+                      Compass(
+                        controllerProvider: () => _mapViewController,
+                        alignment: Alignment.topRight, // Position at top-right
+                        padding: const EdgeInsets.fromLTRB(0, 95, 10, 0),
+                        size: 50, // Diameter of compass icon
+                        automaticallyHides: true, // Hide if not rotated
+                        // Optionally provide a custom icon:
+                        // iconBuilder: (context, size, angleRadians) => YourCustomIcon(...),
+                      ),
                       Visibility(
                         visible: _progress == null && !_offline,
                         child: IgnorePointer(
@@ -349,6 +381,12 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
                           ),
                         ),
                       ),
+
+                      if (_loadingFeature)
+                        Container(
+                          color: Colors.black45,
+                          child: const Center(child: CircularProgressIndicator()),
+                        ),
                     ],
                   ),
                 ),
@@ -618,6 +656,19 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
     debugPrint("_handleMapTap map _selectedFeatureLayer : $_selectedFeatureLayer");
     setState(() => _loadingFeature = true);
     try {
+      ArcGISPoint? mapPoint = await _mapViewController.screenToLocation(screen: screenPoint);
+      ArcGISPoint? currentLocation = _mapViewController.locationDisplay.mapLocation;
+      if (mapPoint != null && currentLocation != null) {
+        double distance = await calculateDistanceBetweenPoints(currentLocation: currentLocation, tappedPoint: mapPoint);
+        if(distance>20)
+        {
+          showMessageDialog("You are not within the range of 20 Meter");
+          return;
+        }
+        {
+          showMessageDialog("You are within the range of 20 Meter");
+        }
+      }
       if (_selectedFeatureLayer != null) {
         _selectedFeatureLayer!.clearSelection();
       }
@@ -717,8 +768,47 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
     _mapViewController.interactionOptions.rotateEnabled = false;
     _offlineMapTask = OfflineMapTask.withOnlineMap(_map!);
     // _offlineMapTask = OfflineMapTask.withPortalItem(portalItem);
-
+    _initializeLocation();
     setState(() => _ready = true);
+  }
+
+  // Create the system location data source.
+  final _locationDataSource = SystemLocationDataSource();
+
+  // A subscription to receive status changes of the location data source.
+  StreamSubscription? _statusSubscription;
+  var _status = LocationDataSourceStatus.stopped;
+
+  // A subscription to receive changes to the auto-pan mode.
+  StreamSubscription? _autoPanModeSubscription;
+  var _autoPanMode = LocationDisplayAutoPanMode.recenter;
+
+  Future<void> _initializeLocation() async {
+    _mapViewController.locationDisplay.dataSource = _locationDataSource;
+    _mapViewController.locationDisplay.autoPanMode =
+        LocationDisplayAutoPanMode.recenter;
+
+    // Subscribe to status changes and changes to the auto-pan mode.
+    _statusSubscription = _locationDataSource.onStatusChanged.listen((status) {
+      setState(() => _status = status);
+    });
+    setState(() => _status = _locationDataSource.status);
+    _autoPanModeSubscription = _mapViewController
+        .locationDisplay
+        .onAutoPanModeChanged
+        .listen((mode) {
+      setState(() => _autoPanMode = mode);
+    });
+    setState(
+          () => _autoPanMode = _mapViewController.locationDisplay.autoPanMode,
+    );
+
+    // Attempt to start the location data source (this will prompt the user for permission).
+    try {
+      await _locationDataSource.start();
+    } on ArcGISException catch (e) {
+      showMessageDialog(e.message);
+    }
   }
 
   Envelope? outlineEnvelopeFixedSize({double size = 200}) {
