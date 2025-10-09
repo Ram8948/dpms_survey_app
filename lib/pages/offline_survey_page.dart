@@ -665,9 +665,9 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
           showMessageDialog("You are not within the range of 20 Meter");
           return;
         }
-        {
-          showMessageDialog("You are within the range of 20 Meter");
-        }
+        // {
+        //   showMessageDialog("You are within the range of 20 Meter");
+        // }
       }
       if (_selectedFeatureLayer != null) {
         _selectedFeatureLayer!.clearSelection();

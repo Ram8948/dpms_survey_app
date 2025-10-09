@@ -542,9 +542,9 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
         showMessageDialog("You are not within the range of 20 Meter");
         return;
       }
-      {
-        showMessageDialog("You are within the range of 20 Meter");
-      }
+      // {
+      //   showMessageDialog("You are within the range of 20 Meter");
+      // }
     }
 
     final identifyResult = await _mapViewController.identifyGraphicsOverlay(
