@@ -209,20 +209,6 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // SegmentedButton<String>(
-                    //   segments: const <ButtonSegment<String>>[
-                    //     ButtonSegment(value: 'Scheme ID', label: Text('Scheme ID')),
-                    //     ButtonSegment(value: 'Object ID', label: Text('Object ID')),
-                    //   ],
-                    //   selected: <String>{searchType},
-                    //   onSelectionChanged: (Set<String> newSelection) {
-                    //     if (newSelection.isNotEmpty) {
-                    //       setState(() {
-                    //         searchType = newSelection.first;
-                    //       });
-                    //     }
-                    //   },
-                    // ),
                     SegmentedButton<String>(
                       segments: const <ButtonSegment<String>>[
                         ButtonSegment(value: 'Scheme ID', label: Text('Scheme ID')),
@@ -375,6 +361,9 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
       final portal = Portal(widget.portalUri);
       await portal.load();
 
+      // final licenseInfo = await portal.fetchLicenseInfo();
+      // final licenseResult = ArcGISEnvironment.setLicenseUsingInfo(licenseInfo);
+
       final portalItem = PortalItem.withPortalAndItemId(
         portal: portal,
         itemId: widget.webMapItemId,
@@ -411,7 +400,8 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
       }
     }
     _mapViewController.setViewpoint(widget.viewPoint);
-    _initializeLocation();
+    // _initializeLocation();
+    hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
     _map.loadSettings.featureTilingMode =
         FeatureTilingMode.enabledWithFullResolutionWhenSupported;
     // Add the graphics overlay to the map view.

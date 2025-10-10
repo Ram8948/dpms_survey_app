@@ -28,11 +28,17 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
 
   bool _loadingFeature = false;
   FeatureLayer? _selectedFeatureLayer;
-  ArcGISMap? _map;
+  ArcGISMap? _map = ArcGISMap.withBasemapStyle(BasemapStyle.arcGISNavigation);
 
   @override
   void initState() {
     super.initState();
+    // _loadBasemapsFuture = loadBasemaps(Portal.arcGISOnline());
+    final portal = Portal(
+      widget.portalUri,
+      connection: PortalConnection.authenticated,
+    );
+    _loadBasemapsFuture = loadBasemaps(portal);
     _loadMap();
   }
 
@@ -55,6 +61,7 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
     await portal.load();
     // final licenseInfo = await portal.fetchLicenseInfo();
     // final licenseResult = ArcGISEnvironment.setLicenseUsingInfo(licenseInfo);
+    // _loadBasemapsFuture = loadBasemaps(portal);
     final portalItem = PortalItem.withPortalAndItemId(
       portal: portal,
       itemId: widget.webMapItemId,
@@ -67,9 +74,11 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
 
     if (mounted) {
       debugPrint("_loadMap map : ${_map}");
+      _layers = _map!.operationalLayers;
       _mapViewController.arcGISMap = _map;
       // Start device location display here
-      _initializeLocation();
+      // _initializeLocation();
+      hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
     }
   }
 
@@ -102,11 +111,11 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
           .listen((mode) {
         setState(() => _autoPanMode = mode);
       });
-      setState(
-            () {
-                  _autoPanMode = _mapViewController.locationDisplay.autoPanMode;;
-                  // _currentLocation = _mapViewController.locationDisplay.mapLocation;
-                }
+      setState(()
+      {
+        _autoPanMode = _mapViewController.locationDisplay.autoPanMode;
+        // _currentLocation = _mapViewController.locationDisplay.mapLocation;
+      }
       );
 
       // Attempt to start the location data source (this will prompt the user for permission).
@@ -265,20 +274,6 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // SegmentedButton<String>(
-                    //   segments: const <ButtonSegment<String>>[
-                    //     ButtonSegment(value: 'Scheme ID', label: Text('Scheme ID')),
-                    //     ButtonSegment(value: 'Object ID', label: Text('Object ID')),
-                    //   ],
-                    //   selected: <String>{searchType},
-                    //   onSelectionChanged: (Set<String> newSelection) {
-                    //     if (newSelection.isNotEmpty) {
-                    //       setState(() {
-                    //         searchType = newSelection.first;
-                    //       });
-                    //     }
-                    //   },
-                    // ),
                     SegmentedButton<String>(
                       segments: const <ButtonSegment<String>>[
                         ButtonSegment(value: 'Scheme ID', label: Text('Scheme ID')),
@@ -354,11 +349,187 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
     );
   }
 
+  // Create a key to access the scaffold state.
+  final _scaffoldStateKey = GlobalKey<ScaffoldState>();
+  // Create a controller for the map view and a map with a navigation basemap.
+  // final _arcGISMap = ArcGISMap.withBasemapStyle(BasemapStyle.arcGISNavigation);
+  // Create a dictionary to store basemaps.
+  final _basemaps = <Basemap, Image>{};
+  // Create a default image.
+  final _defaultImage = Image.asset('assets/basemap_default.png');
+  // Create a future to load basemaps.
+  late Future _loadBasemapsFuture;
+  // Create a variable to store the selected basemap.
+  Basemap? _selectedBasemap;
+
+  Future<void> loadBasemaps(Portal objPortal) async {
+    // Create a portal to access online items.
+    final portal = objPortal;
+    // Load basemaps from portal.
+    final basemaps = await portal.basemaps();
+    await Future.wait(basemaps.map((basemap) => basemap.load()));
+    basemaps.sort((a, b) => a.name.compareTo(b.name));
+
+    // Load each basemap to access and display attribute data in the UI.
+    for (final basemap in basemaps) {
+      if (basemap.item != null) {
+        final thumbnail = basemap.item!.thumbnail;
+        if (thumbnail != null) {
+          await thumbnail.load();
+          _basemaps[basemap] = Image.network(thumbnail.uri.toString());
+        }
+      } else {
+        // If the basemap does not have a thumbnail, use the default image.
+        _basemaps[basemap] = _defaultImage;
+      }
+    }
+  }
+
+  Widget _buildBasemapList() {
+    return FutureBuilder(
+      future: _loadBasemapsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          return GridView.count(
+            crossAxisCount: 2,
+            children: _basemaps.keys.map((basemap) {
+              return ListTile(
+                title: Column(
+                  children: [
+                    Container(
+                      decoration: _selectedBasemap == basemap
+                          ? BoxDecoration(
+                        border: Border.all(color: Colors.blue, width: 4),
+                      )
+                          : null,
+                      child: _basemaps[basemap] ?? _defaultImage,
+                    ),
+                    Text(
+                      basemap.name,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+                onTap: () {
+                  setState(() {
+                    _selectedBasemap = basemap;
+                    _map?.basemap = basemap;
+                  });
+                  _scaffoldStateKey.currentState?.closeEndDrawer();
+                },
+              );
+            }).toList(),
+          );
+        } else {
+          return const Center(child: CircularProgressIndicator());
+        }
+      },
+    );
+  }
+  late List<Layer> _layers;
+  Widget _buildLayerList() {
+    return ListView.builder(
+      itemCount: _layers.length,
+      itemBuilder: (context, index) {
+        final layer = _layers[index];
+        return SwitchListTile(
+          title: Text(layer.name ?? 'Layer $index'),
+          value: layer.isVisible,
+          onChanged: (bool value) {
+            setState(() {
+              layer.isVisible = value;
+            });
+          },
+        );
+      },
+    );
+  }
+
+  void onMapViewReady() {
+    // Set the map view controller's map to the ArcGIS map.
+    _mapViewController.arcGISMap = _map;
+  }
+
+  DrawerContent? _currentContent;
+
+  void _openDrawer(DrawerContent content) {
+    setState(() {
+      _currentContent = content;
+    });
+    _scaffoldStateKey.currentState?.openEndDrawer();
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
+        key: _scaffoldStateKey,
+        // Create an end drawer to display basemaps.
+        // endDrawer: Drawer(
+        //   child: SafeArea(
+        //     // Create a future builder to load basemaps.
+        //     child: FutureBuilder(
+        //       future: _loadBasemapsFuture,
+        //       builder: (context, snapshot) {
+        //         if (snapshot.connectionState == ConnectionState.done) {
+        //           // Create a grid view to display basemaps.
+        //           return GridView.count(
+        //             crossAxisCount: 2,
+        //             children:
+        //             _basemaps.keys
+        //                 .map(
+        //               // Create a list tile for each basemap.
+        //                   (basemap) => ListTile(
+        //                 title: Column(
+        //                   children: [
+        //                     Container(
+        //                       // Add a border to the selected basemap.
+        //                       decoration:
+        //                       _selectedBasemap == basemap
+        //                           ? BoxDecoration(
+        //                         border: Border.all(
+        //                           color: Colors.blue,
+        //                           width: 4,
+        //                         ),
+        //                       )
+        //                           : null,
+        //                       // Display the basemap image.
+        //                       child: _basemaps[basemap] ?? _defaultImage,
+        //                     ),
+        //                     Text(
+        //                       basemap.name,
+        //                       textAlign: TextAlign.center,
+        //                     ),
+        //                   ],
+        //                 ),
+        //                 // Update the map with the selected basemap.
+        //                 onTap: () {
+        //                   _selectedBasemap = basemap;
+        //                   _map?.basemap = basemap;
+        //                   _scaffoldStateKey.currentState!
+        //                       .closeEndDrawer();
+        //                 },
+        //               ),
+        //             )
+        //                 .toList(),
+        //           );
+        //         } else {
+        //           // Display a loading message while loading basemaps.
+        //           return const Center(child: Text('Loading basemaps...'));
+        //         }
+        //       },
+        //     ),
+        //   ),
+        // ),
+        endDrawer: Drawer(
+          child: SafeArea(
+            child: _currentContent == DrawerContent.basemaps
+                ? _buildBasemapList()
+                : _currentContent == DrawerContent.layers
+                ? _buildLayerList()
+                : const Center(child: Text('Select an option')),
+          ),
+        ),
+        appBar: AppBar(
         iconTheme: IconThemeData(
           color: Colors.white, // Set your desired color here
         ),
@@ -380,6 +551,7 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
         children: [
           ArcGISMapView(
             controllerProvider: () => _mapViewController,
+            onMapViewReady: onMapViewReady,
             onTap: _handleMapTap,
           ),
           Compass(
@@ -396,6 +568,37 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
               color: Colors.black45,
               child: const Center(child: CircularProgressIndicator()),
             ),
+          Positioned(
+            bottom: 120,
+            right: 86,
+            child: FloatingActionButton(
+              onPressed: () => _openDrawer(DrawerContent.basemaps),
+              heroTag: 'basemapBtn',
+              shape: const RoundedRectangleBorder(),
+              tooltip: 'Basemaps',
+              child: const Icon(Icons.map),
+            ),
+          ),
+          Positioned(
+            bottom: 120,
+            right: 16,
+            child: FloatingActionButton(
+              onPressed: () => _openDrawer(DrawerContent.layers),
+              heroTag: 'layersBtn',
+              shape: const RoundedRectangleBorder(),
+              tooltip: 'Layers',
+              child: const Icon(Icons.layers),
+            ),
+          ),
+          // Positioned(
+          //   bottom: 120,
+          //   right: 16,
+          //   child: FloatingActionButton(
+          //     onPressed: () => _scaffoldStateKey.currentState!.openEndDrawer(),
+          //     shape: const RoundedRectangleBorder(),
+          //     child: const Icon(Icons.map),
+          //   ),
+          // ),
         ],
       ),
       floatingActionButton:Padding(
@@ -502,3 +705,4 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
     }
   }
 }
+enum DrawerContent { basemaps, layers }

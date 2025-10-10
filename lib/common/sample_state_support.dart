@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:arcgis_maps/arcgis_maps.dart';
 import 'package:flutter/material.dart';
 
@@ -177,13 +179,122 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
         curveType: curveType,
       );
 
+      final geographicPoint = GeometryEngine.project(
+        tappedPoint,
+        outputSpatialReference: SpatialReference.wgs84,
+      ) as ArcGISPoint;
+
+      final latitude = geographicPoint.y;
+      final longitude = geographicPoint.x;
       // Return the distance value from the result
-      debugPrint("Calculated distance : ${result.distance}");
+      debugPrint("Calculated distance : ${result.distance} tappedPoint latitude $latitude longitude $longitude");
       return result.distance;
     } catch (e) {
       debugPrint('Error calculating geodetic distance: $e');
       return 0;
     }
   }
+
+  final hardcodedPoint = ArcGISPoint(
+    x: 73.53089564728866,
+    y: 18.582662615818467,
+    spatialReference: SpatialReference.wgs84,
+  );
+  late SimulatedLocationDataSource _simulatedLocationDataSource;
+
+  ArcGISLocation createHardcodedLocation({
+    required ArcGISPoint position,
+    double horizontalAccuracy = 5.0,
+    double verticalAccuracy = 5.0,
+    double speed = 0.0,
+    double course = 0.0,
+    DateTime? timestamp,
+    bool lastKnown = false,
+    Map<String, dynamic> additionalSourceProperties = const {},
+  }) {
+    return ArcGISLocation(
+      timestamp: timestamp ?? DateTime.now(),
+      position: position,
+      horizontalAccuracy: horizontalAccuracy,
+      verticalAccuracy: verticalAccuracy,
+      speed: speed,
+      course: course,
+      lastKnown: lastKnown,
+      additionalSourceProperties: additionalSourceProperties,
+    );
+  }
+
+  Future<void> hardcodedLocation(ArcGISMapViewController mapViewController, StreamSubscription? statusSubscription,var status,StreamSubscription? autoPanModeSubscription,var autoPanMode) async {
+    final hardcodedLocation = createHardcodedLocation(
+      position: hardcodedPoint,
+    );
+    _simulatedLocationDataSource = SimulatedLocationDataSource.withLocations([hardcodedLocation]);
+    _simulatedLocationDataSource.currentLocationIndex = 0;
+
+    mapViewController.locationDisplay.dataSource = _simulatedLocationDataSource;
+    mapViewController.locationDisplay.autoPanMode =
+        LocationDisplayAutoPanMode.recenter;
+
+    // Subscribe to status changes and changes to the auto-pan mode.
+    statusSubscription = _simulatedLocationDataSource.onStatusChanged.listen((status) {
+      setState(() => status = status);
+    });
+    setState(() => status = _simulatedLocationDataSource.status);
+    autoPanModeSubscription = mapViewController
+        .locationDisplay
+        .onAutoPanModeChanged
+        .listen((mode) {
+      setState(() => autoPanMode = mode);
+    });
+    setState(()
+    {
+      autoPanMode = mapViewController.locationDisplay.autoPanMode;
+    }
+    );
+
+    // Attempt to start the location data source (this will prompt the user for permission).
+    try {
+      await _simulatedLocationDataSource.start();
+    } on ArcGISException catch (e) {
+      showMessageDialog(e.message);
+    }
+  }
+
+  // // Create a key to access the scaffold state.
+  // final scaffoldStateKey = GlobalKey<ScaffoldState>();
+  //
+  // final _arcGISMap = ArcGISMap.withBasemapStyle(BasemapStyle.arcGISNavigation);
+  // // Create a dictionary to store basemaps.
+  // final basemapsList = <Basemap, Image>{};
+  // // Create a default image.
+  // final defaultImage = Image.asset('assets/basemap_default.png');
+  // // Create a future to load basemaps.
+  // late Future loadBasemapsFuture;
+  // // Create a variable to store the selected basemap.
+  // Basemap? selectedBasemap;
+  // final arcGISMap = ArcGISMap.withBasemapStyle(BasemapStyle.arcGISNavigation);
+  //
+  // Future loadBasemaps(Portal objPortal) async {
+  //   // Create a portal to access online items.
+  //   final portal = objPortal;
+  //   // Load basemaps from portal.
+  //   final basemaps = await portal.developerBasemaps();
+  //   await Future.wait(basemaps.map((basemap) => basemap.load()));
+  //   basemaps.sort((a, b) => a.name.compareTo(b.name));
+  //
+  //   // Load each basemap to access and display attribute data in the UI.
+  //   for (final basemap in basemaps) {
+  //     if (basemap.item != null) {
+  //       final thumbnail = basemap.item!.thumbnail;
+  //       if (thumbnail != null) {
+  //         await thumbnail.load();
+  //         basemapsList[basemap] = Image.network(thumbnail.uri.toString());
+  //       }
+  //     } else {
+  //       // If the basemap does not have a thumbnail, use the default image.
+  //       basemapsList[basemap] = defaultImage;
+  //     }
+  //   }
+  // }
 
 }

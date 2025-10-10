@@ -223,20 +223,6 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // SegmentedButton<String>(
-                    //   segments: const <ButtonSegment<String>>[
-                    //     ButtonSegment(value: 'Scheme ID', label: Text('Scheme ID')),
-                    //     ButtonSegment(value: 'Object ID', label: Text('Object ID')),
-                    //   ],
-                    //   selected: <String>{searchType},
-                    //   onSelectionChanged: (Set<String> newSelection) {
-                    //     if (newSelection.isNotEmpty) {
-                    //       setState(() {
-                    //         searchType = newSelection.first;
-                    //       });
-                    //     }
-                    //   },
-                    // ),
                     SegmentedButton<String>(
                       segments: const <ButtonSegment<String>>[
                         ButtonSegment(value: 'Scheme ID', label: Text('Scheme ID')),
