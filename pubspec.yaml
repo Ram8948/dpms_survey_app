@@ -33,6 +33,7 @@ dependencies:
   arcgis_maps: ^200.8.0+4672
   file_picker: ^10.3.2
   image_picker: ^0.8.7+4
+  flutter_spinkit: ^5.2.0
 #  flutter_appauth: ^7.0.0
 
   # The following adds the Cupertino Icons font to your application.

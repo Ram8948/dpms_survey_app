@@ -5,6 +5,7 @@ import 'package:arcgis_maps_toolkit/arcgis_maps_toolkit.dart';
 import 'package:dpmssurveyapp/pages/snap_geometry_edits.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:path_provider/path_provider.dart';
 import '../common/sample_state_support.dart';
 import '../widget/custom_floating_appbar.dart';
@@ -603,18 +604,33 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Add a progress indicator.
-                      Text('$_progress%'),
-                      LinearProgressIndicator(
-                        value: _progress != null ? _progress! / 100.0 : 0.0,
+                      Center(
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // CircularProgressIndicator(
+                            //   value: null, // Keep it always running
+                            //   strokeWidth: 3.0,
+                            // ),
+                            SpinKitDualRing(
+                              lineWidth: 4,
+                              color: Colors.black, // Set to match the loader color
+                              size: 50.0,          // Adjust size as needed
+                            ),
+                            Text(
+                              _progress != null ? '${_progress!.toInt()}%' : '0%',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                          ],
+                        ),
                       ),
-                      // Add a button to cancel the job.
+                      const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: () => _generateOfflineMapJob?.cancel(),
                         child: const Text('Cancel'),
                       ),
                     ],
-                  ),
+                  )
                 ),
               ),
             ),
