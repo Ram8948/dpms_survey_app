@@ -573,7 +573,7 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
           Compass(
             controllerProvider: () => _mapViewController,
             alignment: Alignment.topRight, // Position at top-right
-            padding: const EdgeInsets.fromLTRB(0, 95, 10, 0),
+            padding: const EdgeInsets.fromLTRB(0, 110, 10, 0),
             size: 50, // Diameter of compass icon
             automaticallyHides: true, // Hide if not rotated
             // Optionally provide a custom icon:
