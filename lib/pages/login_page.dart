@@ -474,18 +474,24 @@ class _LoginPageState extends State<LoginPage> {
                 children: [
                   // Logo in a softly colored or white circle, without shadow
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.fromLTRB(24, 6, 24, 6),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.9), // Soft flat white
-                      shape: BoxShape.circle,
+                      shape: BoxShape.rectangle,
+                      borderRadius: BorderRadius.circular(18),
                     ),
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      height: 80,
-                      width: 80,
+                    child:  Image.asset(
+                      'assets/images/logo.jpg',
+                      height: 50,
+                      width: 200,
                     ),
                   ),
-                  SizedBox(height: 24),
+                  // Image.asset(
+                  //   'assets/images/logo.jpg',
+                  //   height: 50,
+                  //   width: 200,
+                  // ),
+                  SizedBox(height: 16),
                   Text(
                     'Welcome Back!',
                     style: TextStyle(

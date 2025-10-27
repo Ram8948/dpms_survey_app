@@ -25,7 +25,8 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
     }
   }
 
-  Future<void> showFeatureActionPopup(ArcGISFeature feature, FeatureLayer featureLayer,Popup featurePopup,bool isOffline,VoidCallback onFormSaved,List<Map<String, dynamic>> schemeList) async {
+
+  Future<void> showFeatureActionPopup(BuildContext context,ArcGISFeature feature, FeatureLayer featureLayer,Popup featurePopup,bool isOffline,VoidCallback onFormSaved,List<Map<String, dynamic>> schemeList) async {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
@@ -55,6 +56,127 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
       },
     );
   }
+
+  // Future<void> showFeatureActionPopup(
+  //     BuildContext context,
+  //     ArcGISFeature feature,
+  //     FeatureLayer featureLayer,
+  //     Popup featurePopup,
+  //     bool isOffline,
+  //     VoidCallback onFormSaved,
+  //     List<Map<String, dynamic>> schemeList,
+  //     ) async {
+  //   await showModalBottomSheet(
+  //     context: context,
+  //     shape: const RoundedRectangleBorder(
+  //       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+  //       side: BorderSide(color: Color(0xFF8DCAFF), width: 1),
+  //     ),
+  //     clipBehavior: Clip.antiAliasWithSaveLayer,
+  //     backgroundColor: const Color(0xFFE8F7FF),
+  //     builder: (BuildContext context) {
+  //       return SafeArea(
+  //         child: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             ListTile(
+  //               leading: const Icon(Icons.edit, color: Color(0xFF0A4F87)),
+  //               title: const Text(
+  //                 'Update Feature',
+  //                 style: TextStyle(
+  //                   color: Color(0xFF0A4F87),
+  //                   fontWeight: FontWeight.w600,
+  //                   fontSize: 16,
+  //                 ),
+  //               ),
+  //               onTap: () {
+  //                 Navigator.pop(context); // Close bottom sheet first
+  //                 openAttributeEditForm(
+  //                   feature,
+  //                   featureLayer,
+  //                   featurePopup,
+  //                   isOffline,
+  //                   onFormSaved,
+  //                   schemeList,
+  //                 );
+  //               },
+  //             ),
+  //             const Divider(
+  //               color: Color(0xFF8DCAFF),
+  //               thickness: 1,
+  //               indent: 72,
+  //               endIndent: 16,
+  //             ),
+  //             ListTile(
+  //               leading: const Icon(Icons.delete, color: Colors.red),
+  //               title: const Text(
+  //                 'Delete Feature',
+  //                 style: TextStyle(
+  //                   color: Colors.red,
+  //                   fontWeight: FontWeight.w600,
+  //                   fontSize: 16,
+  //                 ),
+  //               ),
+  //               onTap: () {
+  //                 Navigator.pop(context);
+  //                 _deleteFeature(feature, featureLayer, isOffline);
+  //               },
+  //             ),
+  //           ],
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
+
+
+  // Future<void> showFeatureActionPopup(ArcGISFeature feature, FeatureLayer featureLayer,Popup featurePopup,bool isOffline,VoidCallback onFormSaved,List<Map<String, dynamic>> schemeList) async {
+  //   showModalBottomSheet(
+  //     context: context,
+  //     shape: RoundedRectangleBorder(
+  //       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+  //       side: BorderSide(color: Color(0xFF8DCAFF), width: 1),
+  //     ),
+  //     clipBehavior: Clip.antiAliasWithSaveLayer,
+  //     backgroundColor: Color(0xFFE8F7FF),
+  //     builder: (BuildContext context) {
+  //       return SafeArea(
+  //         child: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             ListTile(
+  //               leading: Icon(Icons.edit, color: Color(0xFF0A4F87)),
+  //               title: Text(
+  //                 'Update Feature',
+  //                 style: TextStyle(
+  //                   color: Color(0xFF0A4F87),
+  //                   fontWeight: FontWeight.w600,
+  //                   fontSize: 16,
+  //                 ),
+  //               ),
+  //               onTap: () {
+  //                 Navigator.pop(context);
+  //                 openAttributeEditForm(feature, featureLayer, featurePopup, isOffline, onFormSaved, schemeList);
+  //               },
+  //             ),
+  //             Divider(color: Color(0xFF8DCAFF), thickness: 1, indent: 72, endIndent: 16),
+  //             ListTile(
+  //               leading: const Icon(Icons.delete, color: Colors.red),
+  //               title: const Text(
+  //                 'Delete Feature',
+  //                 style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600, fontSize: 16),
+  //               ),
+  //               onTap: () {
+  //                 Navigator.pop(context);
+  //                 _deleteFeature(feature, featureLayer, isOffline);
+  //               },
+  //             ),
+  //           ],
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
 
   Future<void> _deleteFeature(ArcGISFeature feature, FeatureLayer featureLayer, bool isOffline) async {
     final confirmed = await showDialog<bool>(
@@ -196,8 +318,8 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
   }
 
   final hardcodedPoint = ArcGISPoint(
-    x: 73.53089564728866,
-    y: 18.582662615818467,
+    x: 73.04006145109912,
+    y: 18.72611556174884,
     spatialReference: SpatialReference.wgs84,
   );
   late SimulatedLocationDataSource _simulatedLocationDataSource;
@@ -259,42 +381,4 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
       showMessageDialog(e.message);
     }
   }
-
-  // // Create a key to access the scaffold state.
-  // final scaffoldStateKey = GlobalKey<ScaffoldState>();
-  //
-  // final _arcGISMap = ArcGISMap.withBasemapStyle(BasemapStyle.arcGISNavigation);
-  // // Create a dictionary to store basemaps.
-  // final basemapsList = <Basemap, Image>{};
-  // // Create a default image.
-  // final defaultImage = Image.asset('assets/basemap_default.png');
-  // // Create a future to load basemaps.
-  // late Future loadBasemapsFuture;
-  // // Create a variable to store the selected basemap.
-  // Basemap? selectedBasemap;
-  // final arcGISMap = ArcGISMap.withBasemapStyle(BasemapStyle.arcGISNavigation);
-  //
-  // Future loadBasemaps(Portal objPortal) async {
-  //   // Create a portal to access online items.
-  //   final portal = objPortal;
-  //   // Load basemaps from portal.
-  //   final basemaps = await portal.developerBasemaps();
-  //   await Future.wait(basemaps.map((basemap) => basemap.load()));
-  //   basemaps.sort((a, b) => a.name.compareTo(b.name));
-  //
-  //   // Load each basemap to access and display attribute data in the UI.
-  //   for (final basemap in basemaps) {
-  //     if (basemap.item != null) {
-  //       final thumbnail = basemap.item!.thumbnail;
-  //       if (thumbnail != null) {
-  //         await thumbnail.load();
-  //         basemapsList[basemap] = Image.network(thumbnail.uri.toString());
-  //       }
-  //     } else {
-  //       // If the basemap does not have a thumbnail, use the default image.
-  //       basemapsList[basemap] = defaultImage;
-  //     }
-  //   }
-  // }
-
 }

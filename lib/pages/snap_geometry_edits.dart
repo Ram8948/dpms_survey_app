@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import '../common/bottom_sheet_settings.dart';
 import '../common/sample_state_support.dart';
+import '../widget/custom_floating_appbar.dart';
 
 class SnapGeometryEdits extends StatefulWidget {
   final Uri portalUri;
@@ -288,28 +289,35 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.white, // Set your desired color here
-        ),
-        title: const Text(
-          'Add New Feature',
-          style: TextStyle(color: Colors.white),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.black38,
-        elevation: 0,
-        systemOverlayStyle:
-        SystemUiOverlayStyle.light,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.search, color: Colors.white),
-            onPressed: () async {
-              _showSearchDialog();
-            },
-          ),
-        ],// For light status bar icons
+      appBar: CustomFloatingAppBar(
+        title: "Add New Feature",
+        showBackButton: true,
+        onBackPressed: () => Navigator.of(context).pop(),
+        rightIcon: Icons.search,
+        onRightIconPressed: () => _showSearchDialog(),
       ),
+      // appBar: AppBar(
+      //   iconTheme: IconThemeData(
+      //     color: Colors.white, // Set your desired color here
+      //   ),
+      //   title: const Text(
+      //     'Add New Feature',
+      //     style: TextStyle(color: Colors.white),
+      //   ),
+      //   centerTitle: true,
+      //   backgroundColor: Colors.black38,
+      //   elevation: 0,
+      //   systemOverlayStyle:
+      //   SystemUiOverlayStyle.light,
+      //   actions: [
+      //     IconButton(
+      //       icon: Icon(Icons.search, color: Colors.white),
+      //       onPressed: () async {
+      //         _showSearchDialog();
+      //       },
+      //     ),
+      //   ],// For light status bar icons
+      // ),
       body: SafeArea(
         top: false,
         child: Stack(
@@ -422,9 +430,13 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
     );
     // Listen to changes in the selected element in order to enable/disable the UI.
     _geometryEditor.onSelectedElementChanged.listen(
-      (selectedElement) => setState(
-        () => _geometryEditorHasSelectedElement = selectedElement != null,
-      ),
+      (selectedElement) => ()
+      {
+        debugPrint("onSelectedElementChanged");
+        setState(
+              () => _geometryEditorHasSelectedElement = selectedElement != null,
+        );
+      },
     );
 
     // Set the geometry editor to the map view controller.
@@ -523,19 +535,6 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
   Future<void> onTap(Offset localPosition) async {
     // Perform an identify operation on the graphics overlay at the tapped location.
     debugPrint("onTap ${_selectedLayer!.name}");
-    ArcGISPoint? mapPoint = await _mapViewController.screenToLocation(screen: localPosition);
-    ArcGISPoint? currentLocation = _mapViewController.locationDisplay.mapLocation;
-    if (mapPoint != null && currentLocation != null) {
-      double distance = await calculateDistanceBetweenPoints(currentLocation: currentLocation, tappedPoint: mapPoint);
-      if(distance>20)
-      {
-        showMessageDialog("You are not within the range of 20 Meter");
-        return;
-      }
-      // {
-      //   showMessageDialog("You are within the range of 20 Meter");
-      // }
-    }
 
     final identifyResult = await _mapViewController.identifyGraphicsOverlay(
       _graphicsOverlay,
@@ -595,9 +594,35 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
     _geometryEditor.startWithGeometryType(geometryType);
   }
 
-  void stopAndSave() {
+  ArcGISPoint? getGeometryCenter(Geometry? geometry) {
+    // Check if geometry is Envelope type
+    if (geometry is Envelope) {
+      return geometry.center;
+    }
+    // For polygon or polyline, get the extent and then center
+    if (geometry?.extent != null) {
+      return geometry?.extent.center;
+    }
+    // Fallback: Calculate centroid manually for polygons if needed
+    // or return null if not supported
+    return null;
+  }
+
+  Future<void> stopAndSave() async {
     // Get the geometry from the geometry editor.
     final geometry = _geometryEditor.stop();
+
+    // ArcGISPoint? mapPoint = _mapViewController.screenToLocation(screen: );
+    ArcGISPoint? mapPoint = getGeometryCenter(geometry);
+    ArcGISPoint? currentLocation = _mapViewController.locationDisplay.mapLocation;
+    if (mapPoint != null && currentLocation != null) {
+      double distance = await calculateDistanceBetweenPoints(currentLocation: currentLocation, tappedPoint: mapPoint);
+      if(distance>20)
+      {
+        showMessageDialog("You are not within the range of 20 Meter");
+        return;
+      }
+    }
 
     if (geometry != null) {
       if (_selectedGraphic != null) {
@@ -718,6 +743,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
           );
         }
         await showFeatureActionPopup(
+          context,
           feature as ArcGISFeature,
           _selectedLayer!,
           featurePopup!,
@@ -751,65 +777,184 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
     setState(() => _selectedGeometryType = null);
   }
 
+  // Widget buildBottomMenu() {
+  //   return Row(
+  //     children: [
+  //       Expanded(
+  //         child: DropdownButton<FeatureLayer>(
+  //           isExpanded: true,
+  //           alignment: Alignment.center,
+  //           hint: Text(
+  //             'Select Layer',
+  //             style: Theme.of(context).textTheme.labelMedium,
+  //           ),
+  //           icon: const Icon(Icons.arrow_drop_down),
+  //           iconEnabledColor: Theme.of(context).primaryColor,
+  //           iconDisabledColor: Theme.of(context).disabledColor,
+  //           style: Theme.of(context).textTheme.labelMedium,
+  //           value: _selectedLayer,
+  //           items: _layerMenuItems,
+  //           onChanged:
+  //               !_geometryEditorIsStarted
+  //                   ? (layer) async {
+  //                     setState(() => _selectedLayer = layer);
+  //                     await layer?.load();
+  //                     _selectedtable =
+  //                         layer?.featureTable as ArcGISFeatureTable?;
+  //                     setState(() {
+  //                       _selectedGeometryType =
+  //                           layer?.featureTable?.geometryType;
+  //                       if (_selectedGeometryType != null) {
+  //                         startEditingWithGeometryType(_selectedGeometryType!);
+  //                       }
+  //                     });
+  //                   }
+  //                   : null,
+  //           isDense: true,
+  //         ),
+  //       ),
+  //       Expanded(
+  //         child: DropdownButton(
+  //           isExpanded: true,
+  //           alignment: Alignment.center,
+  //           hint: Text('Tool', style: Theme.of(context).textTheme.labelMedium),
+  //           iconEnabledColor: Theme.of(context).colorScheme.primary,
+  //           style: Theme.of(context).textTheme.labelMedium,
+  //           value: _selectedTool,
+  //           items: _toolMenuItems,
+  //           onChanged: (tool) {
+  //             if (tool != null) {
+  //               setState(() => _selectedTool = tool);
+  //               _geometryEditor.tool = tool;
+  //             }
+  //           },
+  //           isDense: true,
+  //         ),
+  //       ),
+  //       IconButton(
+  //         onPressed: () => setState(() => _showEditToolbar = !_showEditToolbar),
+  //         icon: const Icon(Icons.edit),
+  //       ),
+  //     ],
+  //   );
+  // }
+
   Widget buildBottomMenu() {
-    return Row(
-      children: [
-        Expanded(
-          child: DropdownButton<FeatureLayer>(
-            isExpanded: true,
-            alignment: Alignment.center,
-            hint: Text(
-              'Select Layer',
-              style: Theme.of(context).textTheme.labelMedium,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8F7FF), // Same as AppBar gradient start
+          border: Border.all(
+            color: const Color(0xFF8DCAFF), // AppBar border color
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.10),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            icon: const Icon(Icons.arrow_drop_down),
-            iconEnabledColor: Theme.of(context).primaryColor,
-            iconDisabledColor: Theme.of(context).disabledColor,
-            style: Theme.of(context).textTheme.labelMedium,
-            value: _selectedLayer,
-            items: _layerMenuItems,
-            onChanged:
-                !_geometryEditorIsStarted
-                    ? (layer) async {
-                      setState(() => _selectedLayer = layer);
-                      await layer?.load();
-                      _selectedtable =
-                          layer?.featureTable as ArcGISFeatureTable?;
-                      setState(() {
-                        _selectedGeometryType =
-                            layer?.featureTable?.geometryType;
-                        if (_selectedGeometryType != null) {
-                          startEditingWithGeometryType(_selectedGeometryType!);
-                        }
-                      });
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<FeatureLayer>(
+                  isExpanded: true,
+                  alignment: Alignment.center,
+                  hint: Text(
+                    'Select Layer',
+                    style: TextStyle(
+                      color: const Color(0xFF0A4F87), // dark blue for text
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0A4F87)),
+                  dropdownColor: const Color(0xFFE8F7FF), // menu background
+                  style: const TextStyle(
+                    color: Color(0xFF0A4F87),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  value: _selectedLayer,
+                  items: _layerMenuItems,
+                  onChanged: !_geometryEditorIsStarted
+                      ? (layer) async {
+                    setState(() => _selectedLayer = layer);
+                    await layer?.load();
+                    _selectedtable = layer?.featureTable as ArcGISFeatureTable?;
+                    setState(() {
+                      _selectedGeometryType = layer?.featureTable?.geometryType;
+                      if (_selectedGeometryType != null) {
+                        startEditingWithGeometryType(_selectedGeometryType!);
+                      }
+                    });
+                  }
+                      : null,
+                  isDense: true,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton(
+                  isExpanded: true,
+                  alignment: Alignment.center,
+                  hint: const Text(
+                    'Tool',
+                    style: TextStyle(
+                      color: Color(0xFF0A4F87),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0A4F87)),
+                  dropdownColor: const Color(0xFFE8F7FF),
+                  style: const TextStyle(
+                    color: Color(0xFF0A4F87),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  value: _selectedTool,
+                  items: _toolMenuItems,
+                  onChanged: (tool) {
+                    if (tool != null) {
+                      setState(() => _selectedTool = tool);
+                      _geometryEditor.tool = tool;
                     }
-                    : null,
-            isDense: true,
-          ),
+                  },
+                  isDense: true,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFF8DCAFF),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                onPressed: () => setState(() => _showEditToolbar = !_showEditToolbar),
+                icon: const Icon(Icons.edit, color: Color(0xFF0A4F87)),
+                tooltip: "Edit",
+              ),
+            ),
+          ],
         ),
-        Expanded(
-          child: DropdownButton(
-            isExpanded: true,
-            alignment: Alignment.center,
-            hint: Text('Tool', style: Theme.of(context).textTheme.labelMedium),
-            iconEnabledColor: Theme.of(context).colorScheme.primary,
-            style: Theme.of(context).textTheme.labelMedium,
-            value: _selectedTool,
-            items: _toolMenuItems,
-            onChanged: (tool) {
-              if (tool != null) {
-                setState(() => _selectedTool = tool);
-                _geometryEditor.tool = tool;
-              }
-            },
-            isDense: true,
-          ),
-        ),
-        IconButton(
-          onPressed: () => setState(() => _showEditToolbar = !_showEditToolbar),
-          icon: const Icon(Icons.edit),
-        ),
-      ],
+      ),
     );
   }
 
@@ -824,10 +969,10 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               // A button to toggle the visibility of the snap settings.
-              ElevatedButton(
-                onPressed: () => setState(() => _snapSettingsVisible = true),
-                child: const Text('Show snap settings'),
-              ),
+              // ElevatedButton(
+              //   onPressed: () => setState(() => _snapSettingsVisible = true),
+              //   child: const Text('Show snap settings'),
+              // ),
               Row(
                 spacing: 12,
                 children: [

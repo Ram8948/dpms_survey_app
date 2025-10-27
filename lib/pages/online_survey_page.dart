@@ -8,6 +8,8 @@ import 'package:dpmssurveyapp/pages/snap_geometry_edits.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../widget/custom_floating_appbar.dart';
+
 class OnlineSurveyPage extends StatefulWidget {
   final Uri portalUri;
   final String webMapItemId;
@@ -59,8 +61,13 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
       connection: PortalConnection.authenticated,
     );
     await portal.load();
-    // final licenseInfo = await portal.fetchLicenseInfo();
+    final licenseInfo = await portal.fetchLicenseInfo();
+    print("License status: ${licenseInfo.toJson()}");
+    // print("License licenseInfo.toJson(): ${licenseInfo.toJson()["licenseString"]}");
     // final licenseResult = ArcGISEnvironment.setLicenseUsingInfo(licenseInfo);
+    // final licenseResult = ArcGISEnvironment.setLicenseUsingKey(licenseInfo.toJson()["licenseString"]);
+    // print("License status: ${licenseResult.licenseStatus}");
+    // print("License extensionsStatus: ${licenseResult.extensionsStatus}");
     // _loadBasemapsFuture = loadBasemaps(portal);
     final portalItem = PortalItem.withPortalAndItemId(
       portal: portal,
@@ -349,6 +356,63 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
     );
   }
 
+  // AppBar buildGradientAppBar(BuildContext context) {
+  //   return AppBar(
+  //     automaticallyImplyLeading: false,
+  //     backgroundColor: Colors.transparent,
+  //     elevation: 0,
+  //     systemOverlayStyle: const SystemUiOverlayStyle(
+  //       statusBarColor: Colors.white, // Set status bar background to white
+  //       statusBarIconBrightness: Brightness.dark, // Dark icons for visibility
+  //       statusBarBrightness: Brightness.light, // For iOS status bar text color
+  //     ),
+  //     flexibleSpace: Container(
+  //       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  //       decoration: BoxDecoration(
+  //         gradient: LinearGradient(
+  //           begin: Alignment.topLeft,
+  //           end: Alignment.bottomRight,
+  //           transform: const GradientRotation(340.72 * (3.1416 / 180)),
+  //           colors: const [
+  //             Color(0xFFE8F7FF),
+  //             Colors.white,
+  //           ],
+  //           stops: const [0.1025, 0.845],
+  //         ),
+  //         border: Border.all(color: const Color(0xFF8DCAFF), width: 1),
+  //         borderRadius: BorderRadius.circular(24),
+  //         boxShadow: [
+  //           BoxShadow(
+  //             color: Colors.black.withOpacity(0.1),
+  //             spreadRadius: 2,
+  //             blurRadius: 8,
+  //             offset: const Offset(0, 4),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //     iconTheme: const IconThemeData(color: Colors.black),
+  //     title: const Text(
+  //       'Online Survey',
+  //       style: TextStyle(
+  //         color: Colors.black,
+  //         fontWeight: FontWeight.w600,
+  //       ),
+  //     ),
+  //     centerTitle: true,
+  //     actions: [
+  //       IconButton(
+  //         icon: const Icon(Icons.search, color: Colors.black),
+  //         onPressed: () async {
+  //           // Your search action here
+  //         },
+  //       ),
+  //     ],
+  //   );
+  // }
+
+
+
   // Create a key to access the scaffold state.
   final _scaffoldStateKey = GlobalKey<ScaffoldState>();
   // Create a controller for the map view and a map with a navigation basemap.
@@ -463,63 +527,6 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
     return Scaffold(
       extendBodyBehindAppBar: true,
         key: _scaffoldStateKey,
-        // Create an end drawer to display basemaps.
-        // endDrawer: Drawer(
-        //   child: SafeArea(
-        //     // Create a future builder to load basemaps.
-        //     child: FutureBuilder(
-        //       future: _loadBasemapsFuture,
-        //       builder: (context, snapshot) {
-        //         if (snapshot.connectionState == ConnectionState.done) {
-        //           // Create a grid view to display basemaps.
-        //           return GridView.count(
-        //             crossAxisCount: 2,
-        //             children:
-        //             _basemaps.keys
-        //                 .map(
-        //               // Create a list tile for each basemap.
-        //                   (basemap) => ListTile(
-        //                 title: Column(
-        //                   children: [
-        //                     Container(
-        //                       // Add a border to the selected basemap.
-        //                       decoration:
-        //                       _selectedBasemap == basemap
-        //                           ? BoxDecoration(
-        //                         border: Border.all(
-        //                           color: Colors.blue,
-        //                           width: 4,
-        //                         ),
-        //                       )
-        //                           : null,
-        //                       // Display the basemap image.
-        //                       child: _basemaps[basemap] ?? _defaultImage,
-        //                     ),
-        //                     Text(
-        //                       basemap.name,
-        //                       textAlign: TextAlign.center,
-        //                     ),
-        //                   ],
-        //                 ),
-        //                 // Update the map with the selected basemap.
-        //                 onTap: () {
-        //                   _selectedBasemap = basemap;
-        //                   _map?.basemap = basemap;
-        //                   _scaffoldStateKey.currentState!
-        //                       .closeEndDrawer();
-        //                 },
-        //               ),
-        //             )
-        //                 .toList(),
-        //           );
-        //         } else {
-        //           // Display a loading message while loading basemaps.
-        //           return const Center(child: Text('Loading basemaps...'));
-        //         }
-        //       },
-        //     ),
-        //   ),
-        // ),
         endDrawer: Drawer(
           child: SafeArea(
             child: _currentContent == DrawerContent.basemaps
@@ -529,23 +536,32 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
                 : const Center(child: Text('Select an option')),
           ),
         ),
-        appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.white, // Set your desired color here
-        ),
-        title: const Text('Online Survey',style: TextStyle(color: Colors.white),),
-        centerTitle: true,
-        backgroundColor: Colors.black38,
-        elevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.search, color: Colors.white),
-            onPressed: () async {
-              _showSearchDialog();
-            },
-          ),
-        ],// For light status bar icons
+      //   appBar: AppBar(
+      //   iconTheme: IconThemeData(
+      //     color: Colors.white, // Set your desired color here
+      //   ),
+      //   title: const Text('Online Survey',style: TextStyle(color: Colors.white),),
+      //   centerTitle: true,
+      //   backgroundColor: Colors.black38,
+      //   elevation: 0,
+      //   systemOverlayStyle: SystemUiOverlayStyle.light,
+      //   actions: [
+      //     IconButton(
+      //       icon: Icon(Icons.search, color: Colors.white),
+      //       onPressed: () async {
+      //         _showSearchDialog();
+      //       },
+      //     ),
+      //   ],// For light status bar icons
+      // ),
+      // appBar: PreferredSize(
+      //   preferredSize: const Size.fromHeight(kToolbarHeight + 24),
+      //   child: buildGradientAppBar(context),
+      // ),
+      appBar: CustomFloatingAppBar(
+        title: "Online Survey",
+        showBackButton: true,
+        onBackPressed: () => Navigator.of(context).pop(),
       ),
       body: Stack(
         children: [
@@ -568,28 +584,28 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
               color: Colors.black45,
               child: const Center(child: CircularProgressIndicator()),
             ),
-          Positioned(
-            bottom: 120,
-            right: 86,
-            child: FloatingActionButton(
-              onPressed: () => _openDrawer(DrawerContent.basemaps),
-              heroTag: 'basemapBtn',
-              shape: const RoundedRectangleBorder(),
-              tooltip: 'Basemaps',
-              child: const Icon(Icons.map),
-            ),
-          ),
-          Positioned(
-            bottom: 120,
-            right: 16,
-            child: FloatingActionButton(
-              onPressed: () => _openDrawer(DrawerContent.layers),
-              heroTag: 'layersBtn',
-              shape: const RoundedRectangleBorder(),
-              tooltip: 'Layers',
-              child: const Icon(Icons.layers),
-            ),
-          ),
+          // Positioned(
+          //   bottom: 120,
+          //   right: 86,
+          //   child: FloatingActionButton(
+          //     onPressed: () => _openDrawer(DrawerContent.basemaps),
+          //     heroTag: 'basemapBtn',
+          //     shape: const RoundedRectangleBorder(),
+          //     tooltip: 'Basemaps',
+          //     child: const Icon(Icons.map),
+          //   ),
+          // ),
+          // Positioned(
+          //   bottom: 120,
+          //   right: 16,
+          //   child: FloatingActionButton(
+          //     onPressed: () => _openDrawer(DrawerContent.layers),
+          //     heroTag: 'layersBtn',
+          //     shape: const RoundedRectangleBorder(),
+          //     tooltip: 'Layers',
+          //     child: const Icon(Icons.layers),
+          //   ),
+          // ),
           // Positioned(
           //   bottom: 120,
           //   right: 16,
@@ -601,37 +617,103 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
           // ),
         ],
       ),
-      floatingActionButton:Padding(
-    padding: const EdgeInsets.only(bottom: 32.0),
-    child: FloatingActionButton(
-        onPressed: () async {
-          if (_map != null) {
-            final Viewpoint? sourceViewpoint = await _mapViewController.getCurrentViewpoint(ViewpointType.centerAndScale);
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder:
-                    (_) => SnapGeometryEdits(
-                      portalUri: widget.portalUri,
-                      webMapItemId: widget.webMapItemId,
-                      isOffline: false,
-                        viewPoint:sourceViewpoint!
-                    ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 32.0, right: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            FloatingActionButton.small(
+              heroTag: 'surveyAddFAB',
+              tooltip: 'Add New Survey',
+              backgroundColor: const Color(0xFFE8F7FF),          // Custom background color
+              foregroundColor: Colors.black,                     // Icon color
+              elevation: 8,
+              splashColor: Colors.white70,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: const BorderSide(color: Color(0xFF8DCAFF), width: 2), // Border color
               ),
-            );
-            if (result != null) {
-              print('Received result: $result');
-              _mapViewController.setViewpoint(result as Viewpoint);
-              // Handle the result data
-            }
-          }
-        },
-        tooltip: 'Add Survey',
-        // backgroundColor: Colors.blue.shade900,
-        // foregroundColor: Colors.white, // Icon color set explicitly to white
-        child: const Icon(Icons.add),
+              child: const Icon(Icons.add),
+              onPressed: () async {
+                if (_map != null) {
+                  final Viewpoint? sourceViewpoint = await _mapViewController.getCurrentViewpoint(ViewpointType.centerAndScale);
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => SnapGeometryEdits(
+                          portalUri: widget.portalUri,
+                          webMapItemId: widget.webMapItemId,
+                          isOffline: false,
+                          viewPoint:sourceViewpoint!
+                      ),
+                    ),
+                  );
+                  if (result != null) {
+                    print('Received result: $result');
+                    _mapViewController.setViewpoint(result as Viewpoint);
+                    // Handle the result data
+                  }
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.small(
+              heroTag: 'surveySearchFAB',
+              tooltip: 'Search',
+              backgroundColor: const Color(0xFFE8F7FF),          // Custom background color
+              foregroundColor: Colors.black,                     // Icon color
+              elevation: 8,
+              splashColor: Colors.white70,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: const BorderSide(color: Color(0xFF8DCAFF), width: 2), // Border color
+              ),
+              child: const Icon(Icons.search),
+              onPressed: () {
+                _showSearchDialog();
+              },
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.small(
+              heroTag: 'surveyBasemapFAB',
+              tooltip: 'Change Basemap',
+              backgroundColor: const Color(0xFFE8F7FF),          // Custom background color
+              foregroundColor: Colors.black,                     // Icon color
+              elevation: 8,
+              splashColor: Colors.white70,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: const BorderSide(color: Color(0xFF8DCAFF), width: 2), // Border color
+              ),
+              child: const Icon(Icons.map),
+              onPressed: () {
+                _openDrawer(DrawerContent.basemaps);
+              },
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.small(
+              heroTag: 'surveyLayerFAB',
+              tooltip: 'Change Layer',
+              backgroundColor: const Color(0xFFE8F7FF),          // Custom background color
+              foregroundColor: Colors.black,                     // Icon color
+              elevation: 8,
+              splashColor: Colors.white70,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: const BorderSide(color: Color(0xFF8DCAFF), width: 2), // Border color
+              ),
+              child: const Icon(Icons.layers),
+              onPressed: () {
+                _openDrawer(DrawerContent.layers);
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
       ),
-      )
+      floatingActionButtonLocation: FloatingActionButtonLocation.endDocked, // or .endFloat
     );
   }
 
@@ -674,7 +756,7 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
           featureLayer.selectFeatures([feature]);
 
           // Showing popup or feature editing UI
-          showFeatureActionPopup(
+          showFeatureActionPopup(context,
             feature,
             featureLayer,
             result.popups.first,

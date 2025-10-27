@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import '../common/sample_state_support.dart';
+import '../widget/custom_floating_appbar.dart';
 
 class OfflineSurveyPage extends StatefulWidget {
   final Uri portalUri;
@@ -52,6 +53,11 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
   @override
   void initState() {
     super.initState();
+    final portal = Portal(
+      widget.portalUri,
+      connection: PortalConnection.authenticated,
+    );
+    _loadBasemapsFuture = loadBasemaps(portal);
     _checkLocalMap();
   }
 
@@ -297,30 +303,154 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
       },
     );
   }
+  // Create a key to access the scaffold state.
+  final _scaffoldStateKey = GlobalKey<ScaffoldState>();
+  // Create a controller for the map view and a map with a navigation basemap.
+  // final _arcGISMap = ArcGISMap.withBasemapStyle(BasemapStyle.arcGISNavigation);
+  // Create a dictionary to store basemaps.
+  final _basemaps = <Basemap, Image>{};
+  // Create a default image.
+  final _defaultImage = Image.asset('assets/basemap_default.png');
+  // Create a future to load basemaps.
+  late Future _loadBasemapsFuture;
+  // Create a variable to store the selected basemap.
+  Basemap? _selectedBasemap;
+
+  Future<void> loadBasemaps(Portal objPortal) async {
+    // Create a portal to access online items.
+    final portal = objPortal;
+    // Load basemaps from portal.
+    final basemaps = await portal.basemaps();
+    await Future.wait(basemaps.map((basemap) => basemap.load()));
+    basemaps.sort((a, b) => a.name.compareTo(b.name));
+
+    // Load each basemap to access and display attribute data in the UI.
+    for (final basemap in basemaps) {
+      if (basemap.item != null) {
+        final thumbnail = basemap.item!.thumbnail;
+        if (thumbnail != null) {
+          await thumbnail.load();
+          _basemaps[basemap] = Image.network(thumbnail.uri.toString());
+        }
+      } else {
+        // If the basemap does not have a thumbnail, use the default image.
+        _basemaps[basemap] = _defaultImage;
+      }
+    }
+  }
+
+  Widget _buildBasemapList() {
+    return FutureBuilder(
+      future: _loadBasemapsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          return GridView.count(
+            crossAxisCount: 2,
+            children: _basemaps.keys.map((basemap) {
+              return ListTile(
+                title: Column(
+                  children: [
+                    Container(
+                      decoration: _selectedBasemap == basemap
+                          ? BoxDecoration(
+                        border: Border.all(color: Colors.blue, width: 4),
+                      )
+                          : null,
+                      child: _basemaps[basemap] ?? _defaultImage,
+                    ),
+                    Text(
+                      basemap.name,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+                onTap: () {
+                  setState(() {
+                    _selectedBasemap = basemap;
+                    _map?.basemap = basemap;
+                  });
+                  _scaffoldStateKey.currentState?.closeEndDrawer();
+                },
+              );
+            }).toList(),
+          );
+        } else {
+          return const Center(child: CircularProgressIndicator());
+        }
+      },
+    );
+  }
+  late List<Layer> _layers;
+  Widget _buildLayerList() {
+    return ListView.builder(
+      itemCount: _layers.length,
+      itemBuilder: (context, index) {
+        final layer = _layers[index];
+        return SwitchListTile(
+          title: Text(layer.name ?? 'Layer $index'),
+          value: layer.isVisible,
+          onChanged: (bool value) {
+            setState(() {
+              layer.isVisible = value;
+            });
+          },
+        );
+      },
+    );
+  }
+
+  // void onMapViewReady() {
+  //   // Set the map view controller's map to the ArcGIS map.
+  //   _mapViewController.arcGISMap = _map;
+  // }
+
+  DrawerContent? _currentContent;
+
+  void _openDrawer(DrawerContent content) {
+    setState(() {
+      _currentContent = content;
+    });
+    _scaffoldStateKey.currentState?.openEndDrawer();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldStateKey,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.white, // Set your desired color here
-        ),
-        title: const Text('Offline Survey',style: TextStyle(color: Colors.white),),
-        centerTitle: true,
-        backgroundColor: Colors.black38,
-        elevation: 0,
-        systemOverlayStyle:
-        SystemUiOverlayStyle.light, // For light status bar icons
-        actions: [
-            IconButton(
-              icon: Icon(Icons.search, color: Colors.white),
-              onPressed: () async {
-                _showSearchDialog();
-              },
-            ),
-          ],
+      appBar: CustomFloatingAppBar(
+        title: "Offline Survey",
+        showBackButton: true,
+        onBackPressed: () => Navigator.of(context).pop(),
       ),
+      endDrawer: Drawer(
+        child: SafeArea(
+          child: _currentContent == DrawerContent.basemaps
+              ? _buildBasemapList()
+              : _currentContent == DrawerContent.layers
+              ? _buildLayerList()
+              : const Center(child: Text('Select an option')),
+        ),
+      ),
+      // appBar: AppBar(
+      //   iconTheme: IconThemeData(
+      //     color: Colors.white, // Set your desired color here
+      //   ),
+      //   title: const Text('Offline Survey',style: TextStyle(color: Colors.white),),
+      //   centerTitle: true,
+      //   backgroundColor: Colors.black38,
+      //   elevation: 0,
+      //   systemOverlayStyle:
+      //   SystemUiOverlayStyle.light, // For light status bar icons
+      //   actions: [
+      //       IconButton(
+      //         icon: Icon(Icons.search, color: Colors.white),
+      //         onPressed: () async {
+      //           _showSearchDialog();
+      //         },
+      //       ),
+      //     ],
+      // ),
       body: SafeArea(
         top: false,
         left: false,
@@ -383,29 +513,75 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
             // Display a progress indicator and a cancel button during the offline map generation.
             // Display the appropriate button based on map state
             // Conditionally displayed buttons at the bottom
+            // Positioned(
+            //   left: 0, right: 0, bottom: 32, // adjust bottom padding as needed
+            //   child: Builder(
+            //     builder: (_) {
+            //       if (_hasLocalMap && !_offline) {
+            //         return Row(
+            //           mainAxisAlignment: MainAxisAlignment.spaceAround,
+            //           children: [
+            //             ElevatedButton(
+            //               onPressed: loadLocalMap,
+            //               child: const Text('Load Offline Map'),
+            //             ),
+            //             ElevatedButton(
+            //               onPressed: downloadNewMap,
+            //               child: const Text('Download New Map'),
+            //             ),
+            //           ],
+            //         );
+            //       } else if (!_offline && !_hasLocalMap) {
+            //         return Center(
+            //           child: ElevatedButton(
+            //             onPressed: _progress != null ? null : takeOffline,
+            //             child: const Text('Take Map Offline'),
+            //           ),
+            //         );
+            //       } else {
+            //         return const SizedBox.shrink();
+            //       }
+            //     },
+            //   ),
+            // ), // No buttons if map is offline or downloading
             Positioned(
-              left: 0, right: 0, bottom: 32, // adjust bottom padding as needed
+              left: 0,
+              right: 0,
+              bottom: 32,
               child: Builder(
                 builder: (_) {
                   if (_hasLocalMap && !_offline) {
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        ElevatedButton(
+                        themedButton(
+                          label: 'Load Offline Map',
                           onPressed: loadLocalMap,
-                          child: const Text('Load Offline Map'),
+                          backgroundColor: const Color(0xFFE8F7FF),   // AppBar gradient start color
+                          foregroundColor: const Color(0xFF0A4F87),   // Dark blue complement
                         ),
-                        ElevatedButton(
+                        const SizedBox(height: 10),
+                        themedButton(
+                          label: 'Download New Map',
                           onPressed: downloadNewMap,
-                          child: const Text('Download New Map'),
+                          backgroundColor: const Color(0xFFE8F7FF),   // AppBar gradient start color
+                          foregroundColor: const Color(0xFF0A4F87),
                         ),
+                        const SizedBox(height: 10),
                       ],
                     );
                   } else if (!_offline && !_hasLocalMap) {
                     return Center(
-                      child: ElevatedButton(
-                        onPressed: _progress != null ? null : takeOffline,
-                        child: const Text('Take Map Offline'),
+                      child: Column(
+                        children: [
+                          themedButton(
+                            label: 'Take Map Offline',
+                            onPressed: _progress != null ? null : takeOffline,
+                            backgroundColor: const Color(0xFFE8F7FF),
+                            foregroundColor: const Color(0xFF0A4F87),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
                       ),
                     );
                   } else {
@@ -413,7 +589,7 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
                   }
                 },
               ),
-            ), // No buttons if map is offline or downloading
+            ),
             Visibility(
               visible: _progress != null,
               child: Center(
@@ -445,46 +621,159 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
           ],
         ),
       ),
+    //   floatingActionButton: Padding(
+    // padding: const EdgeInsets.only(bottom: 84.0),
+    // child: Column(
+    //     mainAxisSize: MainAxisSize.min,
+    //     children: [
+    //       FloatingActionButton(
+    //         heroTag: 'fab1',
+    //         onPressed: () async {
+    //           if (_map != null) {
+    //             final Viewpoint? sourceViewpoint = await _mapViewController.getCurrentViewpoint(ViewpointType.centerAndScale);
+    //             final result = Navigator.push(
+    //               context,
+    //               MaterialPageRoute(
+    //                 builder: (_) => SnapGeometryEdits(
+    //                   portalUri: widget.portalUri,
+    //                   webMapItemId: widget.webMapItemId,
+    //                   isOffline: true, viewPoint:sourceViewpoint!,
+    //                 ),
+    //               ),
+    //             );
+    //             if (result != null) {
+    //               print('Received result: $result');
+    //               _mapViewController.setViewpoint(result as Viewpoint);
+    //               // Handle the result data
+    //             }
+    //           }
+    //         },
+    //         tooltip: 'Add Survey',
+    //         child: const Icon(Icons.add),
+    //       ),
+    //       SizedBox(height: 16), // spacing between buttons
+    //       FloatingActionButton(
+    //         heroTag: 'fab2',
+    //         onPressed: _syncOfflineData,
+    //         tooltip: 'Sync Data',
+    //         child: const Icon(Icons.sync),
+    //       ),
+    //     ],
+    //   ),
+    //   )
       floatingActionButton: Padding(
-    padding: const EdgeInsets.only(bottom: 84.0),
-    child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton(
-            heroTag: 'fab1',
-            onPressed: () async {
-              if (_map != null) {
-                final Viewpoint? sourceViewpoint = await _mapViewController.getCurrentViewpoint(ViewpointType.centerAndScale);
-                final result = Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SnapGeometryEdits(
-                      portalUri: widget.portalUri,
-                      webMapItemId: widget.webMapItemId,
-                      isOffline: true, viewPoint:sourceViewpoint!,
+        padding: const EdgeInsets.only(bottom: 32.0, right: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            FloatingActionButton.small(
+              heroTag: 'surveyAddFAB',
+              tooltip: 'Add New Survey',
+              backgroundColor: const Color(0xFFE8F7FF),          // Custom background color
+              foregroundColor: Colors.black,                     // Icon color
+              elevation: 8,
+              splashColor: Colors.white70,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: const BorderSide(color: Color(0xFF8DCAFF), width: 2), // Border color
+              ),
+              child: const Icon(Icons.add),
+              onPressed: () async {
+                if (_map != null) {
+                  final Viewpoint? sourceViewpoint = await _mapViewController.getCurrentViewpoint(ViewpointType.centerAndScale);
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => SnapGeometryEdits(
+                          portalUri: widget.portalUri,
+                          webMapItemId: widget.webMapItemId,
+                          isOffline: false,
+                          viewPoint:sourceViewpoint!
+                      ),
                     ),
-                  ),
-                );
-                if (result != null) {
-                  print('Received result: $result');
-                  _mapViewController.setViewpoint(result as Viewpoint);
-                  // Handle the result data
+                  );
+                  if (result != null) {
+                    print('Received result: $result');
+                    _mapViewController.setViewpoint(result as Viewpoint);
+                    // Handle the result data
+                  }
                 }
-              }
-            },
-            tooltip: 'Add Survey',
-            child: const Icon(Icons.add),
-          ),
-          SizedBox(height: 16), // spacing between buttons
-          FloatingActionButton(
-            heroTag: 'fab2',
-            onPressed: _syncOfflineData,
-            tooltip: 'Sync Data',
-            child: const Icon(Icons.sync),
-          ),
-        ],
+              },
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.small(
+              heroTag: 'surveySearchFAB',
+              tooltip: 'Search',
+              backgroundColor: const Color(0xFFE8F7FF),          // Custom background color
+              foregroundColor: Colors.black,                     // Icon color
+              elevation: 8,
+              splashColor: Colors.white70,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: const BorderSide(color: Color(0xFF8DCAFF), width: 2), // Border color
+              ),
+              child: const Icon(Icons.search),
+              onPressed: () {
+                _showSearchDialog();
+              },
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.small(
+              heroTag: 'surveyBasemapFAB',
+              tooltip: 'Change Basemap',
+              backgroundColor: const Color(0xFFE8F7FF),          // Custom background color
+              foregroundColor: Colors.black,                     // Icon color
+              elevation: 8,
+              splashColor: Colors.white70,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: const BorderSide(color: Color(0xFF8DCAFF), width: 2), // Border color
+              ),
+              child: const Icon(Icons.map),
+              onPressed: () {
+                _openDrawer(DrawerContent.basemaps);
+              },
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.small(
+              heroTag: 'surveyLayerFAB',
+              tooltip: 'Change Layer',
+              backgroundColor: const Color(0xFFE8F7FF),          // Custom background color
+              foregroundColor: Colors.black,                     // Icon color
+              elevation: 8,
+              splashColor: Colors.white70,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: const BorderSide(color: Color(0xFF8DCAFF), width: 2), // Border color
+              ),
+              child: const Icon(Icons.layers),
+              onPressed: () {
+                _openDrawer(DrawerContent.layers);
+              },
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.small(
+              heroTag: 'surveySyncFAB',
+              tooltip: 'Sync Data',
+              backgroundColor: const Color(0xFFE8F7FF),          // Custom background color
+              foregroundColor: Colors.black,                     // Icon color
+              elevation: 8,
+              splashColor: Colors.white70,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: const BorderSide(color: Color(0xFF8DCAFF), width: 2), // Border color
+              ),
+              onPressed: _syncOfflineData,
+              child: const Icon(Icons.sync),
+            ),
+            const SizedBox(height: 12),
+
+          ],
+        ),
       ),
-      )
+      floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
     );
   }
 
@@ -517,6 +806,7 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
         _mapViewController.arcGISMap = map;
         setState(() {
           _map = map;
+          _layers = _map!.operationalLayers;
           _offline = true;
         });
       } else {
@@ -634,6 +924,7 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
       _offline = false;
       // Load the online map again to enable the download button
       _mapViewController.arcGISMap = _map;
+      _layers = _map!.operationalLayers;
     });
   }
 
@@ -697,7 +988,7 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
           _selectedFeatureLayer = featureLayer;
           _selectedFeature = feature;
 
-          showFeatureActionPopup(feature, featureLayer, featurePopup, false,() {
+          showFeatureActionPopup(context,feature, featureLayer, featurePopup, false,() {
             // Navigator.pop(context);
             // if (mounted) {
             //   ScaffoldMessenger.of(context).showSnackBar(
@@ -749,12 +1040,14 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
     if (mounted) {
       debugPrint("_loadMap map : ${_map}");
       _mapViewController.arcGISMap = _map;
+      _layers = _map!.operationalLayers;
     }
 
     _mapViewController.interactionOptions.rotateEnabled = false;
     _offlineMapTask = OfflineMapTask.withOnlineMap(_map!);
     // _offlineMapTask = OfflineMapTask.withPortalItem(portalItem);
-    _initializeLocation();
+    // _initializeLocation();
+    hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
     setState(() => _ready = true);
   }
 
@@ -1069,6 +1362,7 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
     if(!result.hasErrors) {
       _map = result.offlineMap;
       _mapViewController.arcGISMap = result.offlineMap;
+      _layers = _map!.operationalLayers;
       _generateOfflineMapJob = null;
     } else {
       result.layerErrors.forEach((layer, e) {
@@ -1115,4 +1409,32 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
           ),
     );
   }
+
+  Widget themedButton({
+    required String label,
+    required VoidCallback? onPressed,
+    required Color backgroundColor,
+    required Color foregroundColor,
+  }) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF8DCAFF), width: 1),
+        ),
+        elevation: 6,
+        shadowColor: Colors.black.withOpacity(0.15),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+      ),
+    );
+  }
+
 }
+enum DrawerContent { basemaps, layers }

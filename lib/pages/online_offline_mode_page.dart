@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../widget/custom_floating_appbar.dart';
 import 'offline_survey_page.dart';
 import 'online_survey_page.dart';
 
@@ -26,25 +27,32 @@ class _OnlineOfflineModePageState extends State<OnlineOfflineModePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,  // To allow gradient behind app bar
-      appBar: AppBar(
-        title: const Text('Survey Mode',style: TextStyle(color: Colors.white),),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.black38, // Transparent app bar to show gradient behind
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: widget.onLogout,
-            tooltip: 'Logout',
-            splashRadius: 26,
-            color: Colors.white,
-            hoverColor: Colors.blue.shade300.withOpacity(0.3),
-          ),
-        ],
-        systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarIconBrightness: Brightness.light, // For light icons on status bar
-          statusBarBrightness: Brightness.dark,
-        ),
+      // appBar: AppBar(
+      //   title: const Text('Survey Mode',style: TextStyle(color: Colors.white),),
+      //   centerTitle: true,
+      //   elevation: 0,
+      //   backgroundColor: Colors.black38, // Transparent app bar to show gradient behind
+      //   actions: [
+      //     IconButton(
+      //       icon: const Icon(Icons.logout),
+      //       onPressed: widget.onLogout,
+      //       tooltip: 'Logout',
+      //       splashRadius: 26,
+      //       color: Colors.white,
+      //       hoverColor: Colors.blue.shade300.withOpacity(0.3),
+      //     ),
+      //   ],
+      //   systemOverlayStyle: const SystemUiOverlayStyle(
+      //     statusBarIconBrightness: Brightness.light, // For light icons on status bar
+      //     statusBarBrightness: Brightness.dark,
+      //   ),
+      // ),
+      appBar: CustomFloatingAppBar(
+        title: "Survey Mode",
+        showBackButton: false,
+        onBackPressed: () => Navigator.of(context).pop(),
+        rightIcon: Icons.power_settings_new,
+        onRightIconPressed: widget.onLogout,
       ),
       body: Container(
         // decoration: BoxDecoration(
@@ -70,8 +78,8 @@ class _OnlineOfflineModePageState extends State<OnlineOfflineModePage> {
               _buildModeButton(
                 icon: Icons.cloud,
                 label: 'Online Survey',
-                backgroundColor: Colors.lightBlue.shade100,
-                foregroundColor: Colors.blue.shade900,
+                backgroundColor: const Color(0xFFE8F7FF),  // Same as AppBar gradient start
+                foregroundColor: const Color(0xFF0A4F87),  // Complementary dark blue for text/icon
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -88,8 +96,8 @@ class _OnlineOfflineModePageState extends State<OnlineOfflineModePage> {
               _buildModeButton(
                 icon: Icons.cloud_off,
                 label: 'Offline Survey',
-                backgroundColor: Colors.blue.shade900,
-                foregroundColor: Colors.white,
+                backgroundColor: const Color(0xFFE8F7FF),  // Same as AppBar gradient start
+                foregroundColor: const Color(0xFF0A4F87),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -102,6 +110,7 @@ class _OnlineOfflineModePageState extends State<OnlineOfflineModePage> {
                   );
                 },
               ),
+
             ],
           ),
         ),
@@ -112,57 +121,28 @@ class _OnlineOfflineModePageState extends State<OnlineOfflineModePage> {
   Widget _buildModeButton({
     required IconData icon,
     required String label,
-    required VoidCallback onPressed,
     required Color backgroundColor,
     required Color foregroundColor,
+    required VoidCallback onPressed,
   }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 58,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 28, color: foregroundColor),
-        label: Padding(
-          padding: const EdgeInsets.only(left: 14),
-          child: Text(
-            label,
-            overflow: TextOverflow.visible,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: foregroundColor,
-              letterSpacing: 1.1,
-            ),
-          ),
+    return ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF8DCAFF), width: 1), // Border color from AppBar
         ),
-        style: ButtonStyle(
-          backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
-            if (states.contains(MaterialState.pressed)) {
-              return backgroundColor.withOpacity(0.85);
-            }
-            if (states.contains(MaterialState.hovered)) {
-              return backgroundColor.withOpacity(0.95);
-            }
-            return backgroundColor;
-          }),
-          elevation: MaterialStateProperty.resolveWith<double>((states) {
-            if (states.contains(MaterialState.pressed)) return 3;
-            return 8;
-          }),
-          shadowColor: MaterialStateProperty.all(Colors.black.withOpacity(0.25)),
-          shape: MaterialStateProperty.all(
-            RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(32),
-              side: BorderSide(color: foregroundColor.withOpacity(0.85), width: 2),
-            ),
-          ),
-          padding: MaterialStateProperty.all(
-            const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
-          ),
-          overlayColor: MaterialStateProperty.all(foregroundColor.withOpacity(0.12)),
-          animationDuration: const Duration(milliseconds: 150),
-        ),
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.1),
       ),
+      icon: Icon(icon, size: 24),
+      label: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+      ),
+      onPressed: onPressed,
     );
   }
 }

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:arcgis_maps/arcgis_maps.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import 'package:path/path.dart' as path;
 
@@ -106,22 +107,38 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     }
   }
 
-  Future<void> _addAttachment() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
-      allowMultiple: false,
-    );
-    if (result != null && result.files.single.path != null) {
-      // setState(() => _newAttachments.add(File(result.files.single.path!)));
+  // Future<void> _addAttachment() async {
+  //   final result = await FilePicker.platform.pickFiles(
+  //     type: FileType.custom,
+  //     allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
+  //     allowMultiple: false,
+  //   );
+  //   if (result != null && result.files.single.path != null) {
+  //     // setState(() => _newAttachments.add(File(result.files.single.path!)));
+  //     setState(() {
+  //       _newAttachments.add(File(result.files.single.path!));
+  //       if (_newAttachments.isNotEmpty || _attachments.isNotEmpty) {
+  //         showAttachmentError = false;
+  //       }
+  //     });
+  //   }
+  // }
+
+  Future<void> _addAttachmentFromCamera() async {
+    final ImagePicker picker = ImagePicker();
+
+    final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+
+    if (photo != null && photo.path.isNotEmpty) {
       setState(() {
-        _newAttachments.add(File(result.files.single.path!));
+        _newAttachments.add(File(photo.path));
         if (_newAttachments.isNotEmpty || _attachments.isNotEmpty) {
           showAttachmentError = false;
         }
       });
     }
   }
+
 
   Future<void> _removeNewAttachment(int index) async {
     // setState(() => _newAttachments.removeAt(index));
@@ -309,7 +326,8 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                                 child: ElevatedButton.icon(
                                   icon: const Icon(Icons.add),
                                   label: const Text('Add Attachment'),
-                                  onPressed: _addAttachment,
+                                  // onPressed: _addAttachment,
+                                  onPressed: _addAttachmentFromCamera,
                                 ),
                               ),
                             ],
@@ -332,6 +350,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                 //   label: const Text('Save Changes'),
                 //   style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
                 // ),
+                const SizedBox(height: 10),
                 Column(
                   children: [
                     ElevatedButton.icon(
@@ -1132,7 +1151,9 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
     );
   }
 
+
   void _showCreateFeatureDialog(int maxPrevProgress) {
+    debugPrint("widget.relatedFeatureTable.fields ${widget.relatedFeatureTable.fields}");
     final intpProgressField = widget.relatedFeatureTable.fields.firstWhere(
       (f) => f.name.toLowerCase() == 'intpprogress',
       orElse: () => throw Exception('intpprogress field not found'),
@@ -1159,16 +1180,39 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            Future<void> pickAttachments() async {
-              FilePickerResult? result = await FilePicker.platform.pickFiles(
-                type: FileType.custom,
-                allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
-                allowMultiple: true,
-              );
-              if (result != null) {
+            // Future<void> pickAttachments() async {
+            //   FilePickerResult? result = await FilePicker.platform.pickFiles(
+            //     type: FileType.custom,
+            //     allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
+            //     allowMultiple: true,
+            //   );
+            //   if (result != null) {
+            //     setState(() {
+            //       attachedFiles.addAll(result.files);
+            //       attachmentError = null; // Clear error if files added
+            //     });
+            //   }
+            // }
+
+            Future<void> pickImageFromCamera() async {
+              final ImagePicker picker = ImagePicker();
+              final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+
+              if (photo != null) {
+                final File file = File(photo.path);
+                final int fileSize = await file.length();
+
                 setState(() {
-                  attachedFiles.addAll(result.files);
-                  attachmentError = null; // Clear error if files added
+                  attachedFiles.add(
+                    PlatformFile(
+                      name: photo.name,
+                      path: photo.path,
+                      size: fileSize,
+                      bytes: null,
+                      // no 'extension' param here; can be inferred from `name`
+                    ),
+                  );
+                  attachmentError = null;
                 });
               }
             }
@@ -1323,6 +1367,7 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                               ),
                               const SizedBox(height: 16),
                               DropdownButtonFormField<int>(
+                                isExpanded: true,
                                 decoration: const InputDecoration(
                                   labelText: 'Physical Progress',
                                   border: OutlineInputBorder(),
@@ -1391,7 +1436,7 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                               ElevatedButton.icon(
                                 icon: const Icon(Icons.attach_file),
                                 label: const Text('Add Attachments'),
-                                onPressed: pickAttachments,
+                                onPressed: pickImageFromCamera,
                               ),
                               const SizedBox(height: 24),
                               Row(
