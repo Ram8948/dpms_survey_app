@@ -63,11 +63,17 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
     await portal.load();
     final licenseInfo = await portal.fetchLicenseInfo();
     print("License status: ${licenseInfo.toJson()}");
-    // print("License licenseInfo.toJson(): ${licenseInfo.toJson()["licenseString"]}");
     // final licenseResult = ArcGISEnvironment.setLicenseUsingInfo(licenseInfo);
-    // final licenseResult = ArcGISEnvironment.setLicenseUsingKey(licenseInfo.toJson()["licenseString"]);
     // print("License status: ${licenseResult.licenseStatus}");
     // print("License extensionsStatus: ${licenseResult.extensionsStatus}");
+    // print('Current license type: ${licenseResult.runtimeType}');
+    final licenseType = ArcGISEnvironment.getLicense().licenseType;
+    final licenseLevel = ArcGISEnvironment.getLicense().licenseLevel;
+    final expiry = ArcGISEnvironment.getLicense().expiry;
+    print('Current license type: ${licenseType}');
+    print('Current licenseLevel : ${licenseLevel}');
+    print('Current license expiry : ${expiry}');
+    // final licenseResult = ArcGISEnvironment.setLicenseUsingKey(licenseInfo.toJson()["licenseString"]);
     // _loadBasemapsFuture = loadBasemaps(portal);
     final portalItem = PortalItem.withPortalAndItemId(
       portal: portal,

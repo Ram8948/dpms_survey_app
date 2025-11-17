@@ -1,8 +1,6 @@
 import 'package:arcgis_maps/arcgis_maps.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import 'home_page.dart';
 import 'login_page.dart';
 import 'online_offline_mode_page.dart';
 class LoginAndHomeManager extends StatefulWidget {
@@ -84,6 +82,7 @@ class _LoginAndHomeManagerState extends State<LoginAndHomeManager> {
     }
     if (_isAuthenticated == false) {
       return LoginPage(onLoginSuccess: _onLoginSuccess);
+      // return LoginPageCopy(onLoginSuccess: _onLoginSuccess);
     }
     return OnlineOfflineModePage(onLogout: _onLogout);
   }

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:arcgis_maps/arcgis_maps.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import 'package:path/path.dart' as path;
@@ -107,22 +108,22 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     }
   }
 
-  // Future<void> _addAttachment() async {
-  //   final result = await FilePicker.platform.pickFiles(
-  //     type: FileType.custom,
-  //     allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
-  //     allowMultiple: false,
-  //   );
-  //   if (result != null && result.files.single.path != null) {
-  //     // setState(() => _newAttachments.add(File(result.files.single.path!)));
-  //     setState(() {
-  //       _newAttachments.add(File(result.files.single.path!));
-  //       if (_newAttachments.isNotEmpty || _attachments.isNotEmpty) {
-  //         showAttachmentError = false;
-  //       }
-  //     });
-  //   }
-  // }
+  Future<void> _addAttachment() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
+      allowMultiple: false,
+    );
+    if (result != null && result.files.single.path != null) {
+      // setState(() => _newAttachments.add(File(result.files.single.path!)));
+      setState(() {
+        _newAttachments.add(File(result.files.single.path!));
+        if (_newAttachments.isNotEmpty || _attachments.isNotEmpty) {
+          showAttachmentError = false;
+        }
+      });
+    }
+  }
 
   Future<void> _addAttachmentFromCamera() async {
     final ImagePicker picker = ImagePicker();
@@ -815,13 +816,29 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
               .split('/')
               .last;
           debugPrint('File extension: $ext');
+          // Compress the file first
+          final compressedBytes = await FlutterImageCompress.compressWithFile(
+            file.path,
+            quality: 50, // 0-100, lower for more compression
+            format: ext == ".jpg" ? CompressFormat.jpeg : CompressFormat.png,
+          );
+
           bool attachmentsEnabled = widget.featureTable.hasAttachments ?? false;
+          // Optionally check if compression succeeded
+          if (compressedBytes == null) {
+            debugPrint("Image compression failed for $name");
+            continue;
+          }
+          // bool attachmentsEnabled = widget.featureTable.hasAttachments ?? false;
           debugPrint("attachmentsEnabled $attachmentsEnabled");
+          debugPrint("name $name");
+          debugPrint("_mimeTypeForExtension ${_mimeTypeForExtension(ext)}");
+          // debugPrint("bytes $bytes");
           await widget.feature.addAttachment(
             name: name,
             contentType: _mimeTypeForExtension(ext),
             // optionally map to mime type
-            data: bytes,
+            data: compressedBytes,
           );
         }
       }
@@ -859,13 +876,18 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
             final bytes = await file.readAsBytes();
             final name = file.path.split('/').last;
             debugPrint('File extension: $ext');
+            final compressedBytes = await FlutterImageCompress.compressWithFile(
+              file.path,
+              quality: 50, // 0-100, lower for more compression
+              format: ext == ".jpg" ? CompressFormat.jpeg : CompressFormat.png,
+            );
             bool attachmentsEnabled = arcGISFeatureTable.hasAttachments ?? false;
             debugPrint("attachmentsEnabled $attachmentsEnabled");
             await newFeature.addAttachment(
               name: name,
               contentType: _mimeTypeForExtension(ext),
               // optionally map to mime type
-              data: bytes,
+              data: compressedBytes!,
             );
           }
           await _applyEdits(newFeature);
@@ -1180,19 +1202,19 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            // Future<void> pickAttachments() async {
-            //   FilePickerResult? result = await FilePicker.platform.pickFiles(
-            //     type: FileType.custom,
-            //     allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
-            //     allowMultiple: true,
-            //   );
-            //   if (result != null) {
-            //     setState(() {
-            //       attachedFiles.addAll(result.files);
-            //       attachmentError = null; // Clear error if files added
-            //     });
-            //   }
-            // }
+            Future<void> pickAttachments() async {
+              FilePickerResult? result = await FilePicker.platform.pickFiles(
+                type: FileType.custom,
+                allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
+                allowMultiple: true,
+              );
+              if (result != null) {
+                setState(() {
+                  attachedFiles.addAll(result.files);
+                  attachmentError = null; // Clear error if files added
+                });
+              }
+            }
 
             Future<void> pickImageFromCamera() async {
               final ImagePicker picker = ImagePicker();
@@ -1283,10 +1305,15 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                   final bytes = await file.readAsBytes();
                   final ext = path.extension(file.path).toLowerCase();
                   final name = path.basename(file.path);
+                  final compressedBytes = await FlutterImageCompress.compressWithFile(
+                    file.path,
+                    quality: 50, // 0-100, lower for more compression
+                    format: ext == ".jpg" ? CompressFormat.jpeg : CompressFormat.png,
+                  );
                   await newFeature.addAttachment(
                     name: name,
                     contentType: mimeTypeForExtension(ext),
-                    data: bytes,
+                    data: compressedBytes!,
                   );
                 }
 
@@ -1437,6 +1464,7 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                                 icon: const Icon(Icons.attach_file),
                                 label: const Text('Add Attachments'),
                                 onPressed: pickImageFromCamera,
+                                // onPressed: pickAttachments,
                               ),
                               const SizedBox(height: 24),
                               Row(

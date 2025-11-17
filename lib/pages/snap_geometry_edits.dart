@@ -700,6 +700,31 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
             feature.geometry,
           );
           if (interceptedFeature != null) {
+
+            final selectedSubtype = await showDialog<int>(
+              context: context,
+              builder: (BuildContext context) {
+                return SimpleDialog(
+                  title: Text('Select Feature Subtype'),
+                  children: [
+                    SimpleDialogOption(
+                      onPressed: () => Navigator.pop(context, 1),
+                      child: Text('Conventional'),
+                    ),
+                    SimpleDialogOption(
+                      onPressed: () => Navigator.pop(context, 2),
+                      child: Text('Un-Conventional'),
+                    ),
+                  ],
+                );
+              },
+            );
+
+            // User cancelled dialog or did not select
+            if (selectedSubtype == null) {
+              return;
+            }
+            feature.attributes['subtype'] = selectedSubtype;
             if (!await processNewFeature(interceptedFeature, feature)) {
               return;
             }
