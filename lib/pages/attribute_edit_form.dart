@@ -236,7 +236,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Attachments",
+                          "Photos",
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
@@ -294,7 +294,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          'Open attachment: ${attachment.name}',
+                                          'Open photos: ${attachment.name}',
                                         ),
                                       ),
                                     );
@@ -326,7 +326,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                                 alignment: Alignment.centerRight,
                                 child: ElevatedButton.icon(
                                   icon: const Icon(Icons.add),
-                                  label: const Text('Add Attachment'),
+                                  label: const Text('Add Photos'),
                                   // onPressed: _addAttachment,
                                   onPressed: _addAttachmentFromCamera,
                                 ),
@@ -859,9 +859,21 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         debugPrint("relatedFeatures $relatedFeatures");
         if (relatedFeatures.isEmpty) {
           final DateTime defaultDate = DateTime.now();
+          var intpProgressField ="intpprogress";
+          debugPrint("widget.feature.attributes.containsKey(subtype) ${widget.feature.attributes.containsKey("subtype")}");
+          if(widget.feature.attributes.containsKey("subtype"))
+          {
+            int subtype = widget.feature.attributes['subtype'];
+            debugPrint("subtype $subtype");
+            if(subtype==1)
+            {
+              intpProgressField = "intpprogressc";
+            }
+          }
+          debugPrint("intpProgressField $intpProgressField");
           Map<String, dynamic> newAttributes = {
             'GUID': widget.feature.attributes['globalid'], // link to parent
-            'intpprogress': initProgress,
+            intpProgressField: initProgress,
             'surveyordate': defaultDate, // example physical progress code
             // other necessary attributes
           };
@@ -1285,10 +1297,19 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
               setState(() {
                 isLoading = true;
               });
+              var intpProgressField ="intpprogress";
+              if(widget.feature.attributes.containsKey("subtype"))
+              {
+                int subtype = widget.feature.attributes['subtype'];
+                if(subtype==1)
+                {
+                  intpProgressField = "intpprogressc";
+                }
+              }
 
               Map<String, dynamic> newAttributes = {
                 'GUID': widget.feature.attributes['globalid'],
-                intpProgressField.name: selectedCode,
+                intpProgressField: selectedCode,
                 'surveyordate': defaultDate,
               };
 
@@ -1462,7 +1483,7 @@ class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
                               ],
                               ElevatedButton.icon(
                                 icon: const Icon(Icons.attach_file),
-                                label: const Text('Add Attachments'),
+                                label: const Text('Add Photos'),
                                 onPressed: pickImageFromCamera,
                                 // onPressed: pickAttachments,
                               ),

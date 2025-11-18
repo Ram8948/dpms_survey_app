@@ -90,8 +90,8 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
       _layers = _map!.operationalLayers;
       _mapViewController.arcGISMap = _map;
       // Start device location display here
-      // _initializeLocation();
-      hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
+      _initializeLocation();
+      // hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
     }
   }
 
@@ -498,10 +498,17 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
   }
   late List<Layer> _layers;
   Widget _buildLayerList() {
+    final sortedLayers = List.of(_layers)
+      ..sort((a, b) {
+        final aName = a.name ?? '';
+        final bName = b.name ?? '';
+        return aName.toLowerCase().compareTo(bName.toLowerCase());
+      });
+
     return ListView.builder(
-      itemCount: _layers.length,
+      itemCount: sortedLayers.length,
       itemBuilder: (context, index) {
-        final layer = _layers[index];
+        final layer = sortedLayers[index];
         return SwitchListTile(
           title: Text(layer.name ?? 'Layer $index'),
           value: layer.isVisible,

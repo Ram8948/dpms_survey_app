@@ -383,10 +383,16 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
   }
   late List<Layer> _layers;
   Widget _buildLayerList() {
+    final sortedLayers = List.of(_layers)
+      ..sort((a, b) {
+        final aName = a.name ?? '';
+        final bName = b.name ?? '';
+        return aName.toLowerCase().compareTo(bName.toLowerCase());
+      });
     return ListView.builder(
-      itemCount: _layers.length,
+      itemCount: sortedLayers.length,
       itemBuilder: (context, index) {
-        final layer = _layers[index];
+        final layer = sortedLayers[index];
         return SwitchListTile(
           title: Text(layer.name ?? 'Layer $index'),
           value: layer.isVisible,
@@ -1062,8 +1068,8 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
     _mapViewController.interactionOptions.rotateEnabled = false;
     _offlineMapTask = OfflineMapTask.withOnlineMap(_map!);
     // _offlineMapTask = OfflineMapTask.withPortalItem(portalItem);
-    // _initializeLocation();
-    hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
+    _initializeLocation();
+    // hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
     setState(() => _ready = true);
   }
 

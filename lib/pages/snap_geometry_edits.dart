@@ -408,8 +408,8 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
       }
     }
     _mapViewController.setViewpoint(widget.viewPoint);
-    // _initializeLocation();
-    hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
+    _initializeLocation();
+    // hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
     _map.loadSettings.featureTilingMode =
         FeatureTilingMode.enabledWithFullResolutionWhenSupported;
     // Add the graphics overlay to the map view.
@@ -478,7 +478,11 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
         );
       }
     }
-
+    _layerMenuItems.sort((a, b) {
+      final aName = (a.child as Text).data ?? '';
+      final bName = (b.child as Text).data ?? '';
+      return aName.toLowerCase().compareTo(bName.toLowerCase());
+    });
     // Set the ready state variable to true to enable the sample UI.
     setState(() => _ready = true);
   }
