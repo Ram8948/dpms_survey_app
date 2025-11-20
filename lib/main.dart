@@ -43,7 +43,7 @@ final ThemeData appTheme = ThemeData(
   ),
 
   // Scaffold & Background
-  scaffoldBackgroundColor: Colors.indigo.shade50,
+  scaffoldBackgroundColor: const Color(0xFFE8F7FF),
 
   // AppBar styling
   appBarTheme: AppBarTheme(

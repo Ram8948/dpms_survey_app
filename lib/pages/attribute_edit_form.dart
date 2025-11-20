@@ -1,11 +1,15 @@
 import 'dart:io';
 import 'package:arcgis_maps/arcgis_maps.dart';
+import 'package:dpmssurveyapp/pages/related_features_page.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import 'package:path/path.dart' as path;
+
+import '../widget/custom_floating_appbar.dart';
+import 'details_page.dart';
 
 class AttributeEditForm extends StatefulWidget {
   final ArcGISFeature feature;
@@ -200,7 +204,17 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       return aIndex.compareTo(bIndex);
     });
 
-    return SafeArea(
+    return Scaffold(
+    //     appBar: AppBar(
+    //     title: Text(getFeatureTitle()),
+    // leading: BackButton(onPressed: () => Navigator.of(context).pop()),
+    // ),
+      appBar: CustomFloatingAppBar(
+        title: getFeatureTitle(),
+        showBackButton: true,
+        onBackPressed: () => Navigator.of(context).pop(),
+      ),
+    body: SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -215,14 +229,14 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  getFeatureTitle(),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 6),
+                // Text(
+                //   getFeatureTitle(),
+                //   style: Theme.of(
+                //     context,
+                //   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                //   overflow: TextOverflow.ellipsis,
+                // ),
+                // const SizedBox(height: 6),
                 ...filteredFields
                     .map((field) => _buildFieldCard(field, popupFieldList))
                     .toList(),
@@ -378,7 +392,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
           ),
         ),
       ),
-    );
+    ),);
   }
 
   Future<void> _showRelatedFeaturesDialog() async {
@@ -386,57 +400,88 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       _relatedFeaturesLoading = true;
     });
     try {
-      // final relatedFeatures = await getRelatedFeatures(widget.feature);
-      final relatedFeatures = await _queryRelatedFeatures(widget.feature);
-      setState(() {
-        _relatedFeatures = relatedFeatures;
-        _relatedFeaturesLoading = false;
-      });
+      // final relatedFeatures = await _queryRelatedFeatures(widget.feature);
+      // setState(() {
+      //   _relatedFeatures = relatedFeatures;
+      //   _relatedFeaturesLoading = false;
+      // });
 
-      showDialog(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Related Features'),
-              content: SizedBox(
-                width: double.maxFinite,
-                height: 400, // fixed height for scrolling table
-                child:
-                    _relatedFeaturesLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : RelatedFeaturesTable(
-                          relatedFeatures: _relatedFeatures,
-                          relatedFeatureTable: relatedTables!.first,
-                          refreshParent: () async {
-                            // Refresh list after CRUD
-                            // final freshRelated = await getRelatedFeatures(
-                            //   widget.feature,
-                            // );
-                            final freshRelated = await _queryRelatedFeatures(widget.feature);
-                            setState(() {
-                              debugPrint(
-                                "refreshParent ${_relatedFeatures.length}",
-                              );
-                              debugPrint(
-                                "refreshParent freshRelated ${freshRelated.length}",
-                              );
-                              _relatedFeatures = freshRelated;
-                              debugPrint(
-                                "refreshParent ${_relatedFeatures.length}",
-                              );
-                            });
-                          },
-                          feature: widget.feature,
-                        ),
-              ),
-              actions: [
-                TextButton(
-                  child: const Text('Close'),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
+      // showDialog(
+      //   context: context,
+      //   builder:
+      //       (context) => AlertDialog(
+      //         title: const Text('Related Features'),
+      //         content: SizedBox(
+      //           width: double.maxFinite,
+      //           height: 400, // fixed height for scrolling table
+      //           child:
+      //               _relatedFeaturesLoading
+      //                   ? const Center(child: CircularProgressIndicator())
+      //                   : RelatedFeaturesTable(
+      //                     relatedFeatures: _relatedFeatures,
+      //                     relatedFeatureTable: relatedTables!.first,
+      //                     refreshParent: () async {
+      //                       // Refresh list after CRUD
+      //                       // final freshRelated = await getRelatedFeatures(
+      //                       //   widget.feature,
+      //                       // );
+      //                       final freshRelated = await _queryRelatedFeatures(widget.feature);
+      //                       setState(() {
+      //                         debugPrint(
+      //                           "refreshParent ${_relatedFeatures.length}",
+      //                         );
+      //                         debugPrint(
+      //                           "refreshParent freshRelated ${freshRelated.length}",
+      //                         );
+      //                         _relatedFeatures = freshRelated;
+      //                         debugPrint(
+      //                           "refreshParent ${_relatedFeatures.length}",
+      //                         );
+      //                       });
+      //                     },
+      //                     feature: widget.feature,
+      //                   ),
+      //         ),
+      //         actions: [
+      //           TextButton(
+      //             child: const Text('Close'),
+      //             onPressed: () => Navigator.of(context).pop(),
+      //           ),
+      //         ],
+      //       ),
+      // );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RelatedFeaturesPage(
+            feature: widget.feature,
+            relatedFeatureTable: relatedTables!.first,
+            mainFeatureTable: _mainFeatureTable!,
+            // refreshParent: () async {
+            //   // Refresh list after CRUD
+            //   // final freshRelated = await getRelatedFeatures(
+            //   //   widget.feature,
+            //   // );
+            //   final freshRelated = await _queryRelatedFeatures(widget.feature);
+            //   setState(() {
+            //     debugPrint(
+            //       "refreshParent ${_relatedFeatures.length}",
+            //     );
+            //     debugPrint(
+            //       "refreshParent freshRelated ${freshRelated.length}",
+            //     );
+            //     _relatedFeatures = freshRelated;
+            //     debugPrint(
+            //       "refreshParent ${_relatedFeatures.length}",
+            //     );
+            //   });
+            // },
+            // feature: widget.feature,
+          ),
+        ),
       );
+
     } catch (e) {
       setState(() {
         _relatedFeaturesLoading = false;
@@ -1086,449 +1131,499 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
 }
 
 // class RelatedFeaturesTable extends StatefulWidget {
-class RelatedFeaturesTable extends StatefulWidget {
-  final List<Feature> relatedFeatures;
-  final ArcGISFeatureTable relatedFeatureTable;
-  final VoidCallback refreshParent;
-  final ArcGISFeature feature;
+// class RelatedFeaturesTable extends StatefulWidget {
+//   final List<Feature> relatedFeatures;
+//   final ArcGISFeatureTable relatedFeatureTable;
+//   final VoidCallback refreshParent;
+//   final ArcGISFeature feature;
+//
+//   const RelatedFeaturesTable({
+//     required this.relatedFeatures,
+//     required this.relatedFeatureTable,
+//     required this.refreshParent,
+//     required this.feature,
+//     super.key,
+//   });
+//
+//   @override
+//   _RelatedFeaturesTableState createState() => _RelatedFeaturesTableState();
+// }
+//
+// class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
+//   late List<Feature> features;
+//   late var maxPrevProgress;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     features = List.from(widget.relatedFeatures);
+//     final progressValues =
+//         features.map((feature) {
+//           debugPrintLong("RelatedFeaturesTable feature.attributes ${feature.attributes}");
+//           final rawValue = feature.attributes['intpprogress'];
+//           return (rawValue != null) ? rawValue as int : 0;
+//         }).toList();
+//     debugPrint("RelatedFeaturesTable progressValues $progressValues");
+//     maxPrevProgress =
+//         progressValues.isNotEmpty
+//             ? progressValues.reduce((a, b) => a > b ? a : b)
+//             : 0;
+//
+//   }
+//   void debugPrintLong(String message, {int chunkSize = 800}) {
+//     final pattern = RegExp('.{1,$chunkSize}', dotAll: true);
+//     pattern.allMatches(message).forEach((match) => debugPrint(match.group(0)));
+//   }
+//   @override
+//   Widget build(BuildContext context) {
+//     if (features.isEmpty) {
+//       return Column(
+//         children: [
+//           const Text('No related features found.'),
+//           ElevatedButton(
+//             onPressed: () {
+//               _showCreateFeatureDialog(maxPrevProgress);
+//             },
+//             child: const Text('Add Related Feature'),
+//           ),
+//         ],
+//       );
+//     }
+//
+//     final fields = widget.relatedFeatureTable.fields;
+//
+//     return Column(
+//       children: [
+//         SingleChildScrollView(
+//           scrollDirection: Axis.horizontal,
+//           child: DataTable(
+//             columns: [
+//               ...fields.map(
+//                 (field) => DataColumn(label: Text(field.alias ?? field.name)),
+//               ),
+//               // No Actions column
+//             ],
+//             rows:
+//                 features.map((feature) {
+//                   return DataRow(
+//                     cells: [
+//                       ...fields.map((field) {
+//                         final value = feature.attributes[field.name];
+//                         return DataCell(
+//                           Text(value?.toString() ?? ''),
+//                           // No editing or deletion enabled
+//                         );
+//                       }).toList(),
+//                       // No delete action cell
+//                     ],
+//                     onSelectChanged: (selected) {
+//                       if (selected == true) {
+//                         Navigator.push(
+//                           context,
+//                           MaterialPageRoute(
+//                             builder: (context) => DetailsPage(
+//                               fields: fields,
+//                               data: feature.attributes,
+//                             ),
+//                           ),
+//                         );
+//                       }
+//                     },
+//                   );
+//                 }).toList(),
+//           ),
+//         ),
+//         ElevatedButton(
+//           onPressed: () {
+//             _showCreateFeatureDialog(maxPrevProgress);
+//           },
+//           child: const Text('Add Related Feature'),
+//         ),
+//       ],
+//     );
+//   }
+//
+//
+//   void _showCreateFeatureDialog(int maxPrevProgress) {
+//     debugPrint("widget.relatedFeatureTable.fields ${widget.relatedFeatureTable.fields}");
+//     final intpProgressField = widget.relatedFeatureTable.fields.firstWhere(
+//       (f) => f.name.toLowerCase() == 'intpprogress',
+//       orElse: () => throw Exception('intpprogress field not found'),
+//     );
+//
+//     final List<dynamic> codedValuesJson =
+//         intpProgressField.domain?.toJson()['codedValues'] ?? [];
+//     final List<Map<String, dynamic>> codedValues =
+//         codedValuesJson.map((cv) {
+//           return {'code': cv['code'], 'name': cv['name']};
+//         }).toList();
+//
+//     int? selectedCode;
+//     List<PlatformFile> attachedFiles = [];
+//     final DateTime defaultDate = DateTime.now();
+//     final _formKey = GlobalKey<FormState>();
+//     String? attachmentError;
+//
+//     bool isLoading = false;
+//
+//     showDialog(
+//       context: context,
+//       barrierDismissible: false,
+//       builder: (context) {
+//         return StatefulBuilder(
+//           builder: (context, setState) {
+//             Future<void> pickAttachments() async {
+//               FilePickerResult? result = await FilePicker.platform.pickFiles(
+//                 type: FileType.custom,
+//                 allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
+//                 allowMultiple: true,
+//               );
+//               if (result != null) {
+//                 setState(() {
+//                   attachedFiles.addAll(result.files);
+//                   attachmentError = null; // Clear error if files added
+//                 });
+//               }
+//             }
+//
+//             Future<void> pickImageFromCamera() async {
+//               final ImagePicker picker = ImagePicker();
+//               final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+//
+//               if (photo != null) {
+//                 final File file = File(photo.path);
+//                 final int fileSize = await file.length();
+//
+//                 setState(() {
+//                   attachedFiles.add(
+//                     PlatformFile(
+//                       name: photo.name,
+//                       path: photo.path,
+//                       size: fileSize,
+//                       bytes: null,
+//                       // no 'extension' param here; can be inferred from `name`
+//                     ),
+//                   );
+//                   attachmentError = null;
+//                 });
+//               }
+//             }
+//
+//             void removeAttachment(int index) {
+//               setState(() {
+//                 attachedFiles.removeAt(index);
+//                 if (attachedFiles.isEmpty) {
+//                   attachmentError = 'Please add at least one attachment';
+//                 } else {
+//                   attachmentError = null;
+//                 }
+//               });
+//             }
+//
+//             String mimeTypeForExtension(String ext) {
+//               switch (ext.toLowerCase()) {
+//                 case '.jpg':
+//                 case '.jpeg':
+//                   return 'image/jpeg';
+//                 case '.png':
+//                   return 'image/png';
+//                 case '.pdf':
+//                   return 'application/pdf';
+//                 case '.txt':
+//                   return 'text/plain';
+//                 default:
+//                   return 'application/octet-stream';
+//               }
+//             }
+//
+//             Future<void> createFeatureWithAttachments() async {
+//               if (!_formKey.currentState!.validate()) return;
+//
+//               if (attachedFiles.isEmpty) {
+//                 setState(() {
+//                   attachmentError = 'Please add at least one attachment';
+//                 });
+//                 return;
+//               } else {
+//                 setState(() {
+//                   attachmentError = null;
+//                 });
+//               }
+//
+//               _formKey.currentState!.save();
+//
+//               setState(() {
+//                 isLoading = true;
+//               });
+//               var intpProgressField ="intpprogress";
+//               if(widget.feature.attributes.containsKey("subtype"))
+//               {
+//                 int subtype = widget.feature.attributes['subtype'];
+//                 if(subtype==1)
+//                 {
+//                   intpProgressField = "intpprogressc";
+//                 }
+//               }
+//
+//               Map<String, dynamic> newAttributes = {
+//                 'GUID': widget.feature.attributes['globalid'],
+//                 intpProgressField: selectedCode,
+//                 'surveyordate': defaultDate,
+//               };
+//
+//               try {
+//                 final newFeature =
+//                     widget.relatedFeatureTable.createFeature(
+//                           attributes: newAttributes,
+//                         )
+//                         as ArcGISFeature;
+//                 await widget.relatedFeatureTable.addFeature(newFeature);
+//
+//                 for (final attachedFile in attachedFiles) {
+//                   File file = File(attachedFile.path!);
+//                   final bytes = await file.readAsBytes();
+//                   final ext = path.extension(file.path).toLowerCase();
+//                   final name = path.basename(file.path);
+//                   final compressedBytes = await FlutterImageCompress.compressWithFile(
+//                     file.path,
+//                     quality: 50, // 0-100, lower for more compression
+//                     format: ext == ".jpg" ? CompressFormat.jpeg : CompressFormat.png,
+//                   );
+//                   await newFeature.addAttachment(
+//                     name: name,
+//                     contentType: mimeTypeForExtension(ext),
+//                     data: compressedBytes!,
+//                   );
+//                 }
+//
+//                 if (widget.relatedFeatureTable is ServiceFeatureTable) {
+//                   final serviceFeatureTable =
+//                       widget.relatedFeatureTable as ServiceFeatureTable;
+//                   await serviceFeatureTable.updateFeature(newFeature);
+//                   final applyEditsResult =
+//                       await serviceFeatureTable.applyEdits();
+//                   if (applyEditsResult.isEmpty) {
+//                     throw Exception(
+//                       'ApplyEdits returned no results, attachment may not be added',
+//                     );
+//                   }
+//                 } else if (widget.relatedFeatureTable
+//                     is GeodatabaseFeatureTable) {
+//                   final geodatabaseFeatureTable =
+//                       widget.relatedFeatureTable as GeodatabaseFeatureTable;
+//                   await geodatabaseFeatureTable.updateFeature(newFeature);
+//                 } else {
+//                   throw Exception(
+//                     'Unsupported feature table type for updating features',
+//                   );
+//                 }
+//
+//                 setState(() {
+//                   attachedFiles.clear();
+//                   features.add(newFeature);
+//                 });
+//
+//                 widget.refreshParent();
+//
+//                 Navigator.of(context).pop();
+//               } catch (e) {
+//                 if (mounted) {
+//                   ScaffoldMessenger.of(
+//                     context,
+//                   ).showSnackBar(SnackBar(content: Text('Create failed: $e')));
+//                 }
+//               } finally {
+//                 if (mounted) {
+//                   setState(() {
+//                     isLoading = false;
+//                   });
+//                 }
+//               }
+//             }
+//
+//             return Dialog(
+//               child: ConstrainedBox(
+//                 constraints: const BoxConstraints(maxWidth: 350),
+//                 child: Stack(
+//                   children: [
+//                     SingleChildScrollView(
+//                       padding: const EdgeInsets.all(16),
+//                       child: AbsorbPointer(
+//                         absorbing: isLoading,
+//                         child: Form(
+//                           key: _formKey,
+//                           child: Column(
+//                             mainAxisSize: MainAxisSize.min,
+//                             children: [
+//                               Text(
+//                                 'Add Progress Entry',
+//                                 style:
+//                                     Theme.of(context).textTheme.headlineSmall,
+//                               ),
+//                               const SizedBox(height: 16),
+//                               TextFormField(
+//                                 readOnly: true,
+//                                 initialValue: DateFormat(
+//                                   'yyyy-MM-dd',
+//                                 ).format(defaultDate),
+//                                 decoration: const InputDecoration(
+//                                   labelText: 'Survey Date',
+//                                   border: OutlineInputBorder(),
+//                                 ),
+//                               ),
+//                               const SizedBox(height: 16),
+//                               DropdownButtonFormField<int>(
+//                                 isExpanded: true,
+//                                 decoration: const InputDecoration(
+//                                   labelText: 'Physical Progress',
+//                                   border: OutlineInputBorder(),
+//                                 ),
+//                                 value: selectedCode,
+//                                 items:
+//                                     codedValues.map((cv) {
+//                                       return DropdownMenuItem<int>(
+//                                         value: cv['code'],
+//                                         child: Text(cv['name']),
+//                                       );
+//                                     }).toList(),
+//                                 onChanged:
+//                                     (val) => setState(() => selectedCode = val),
+//                                 validator: (val) {
+//                                   if (val == null) {
+//                                     return 'Please select a physical progress status';
+//                                   }
+//                                   if (val <= maxPrevProgress) {
+//                                     return 'Progress must be higher than last recorded ($maxPrevProgress)';
+//                                   }
+//                                   return null;
+//                                 },
+//                               ),
+//                               const SizedBox(height: 16),
+//                               TextFormField(
+//                                 decoration: const InputDecoration(
+//                                   labelText: 'Remark',
+//                                   border: OutlineInputBorder(),
+//                                 ),
+//                               ),
+//                               const SizedBox(height: 16),
+//                               if (attachedFiles.isNotEmpty) ...[
+//                                 SizedBox(
+//                                   height: 150,
+//                                   child: ListView.builder(
+//                                     shrinkWrap: true,
+//                                     physics:
+//                                         const AlwaysScrollableScrollPhysics(),
+//                                     itemCount: attachedFiles.length,
+//                                     itemBuilder: (context, index) {
+//                                       final file = attachedFiles[index];
+//                                       return ListTile(
+//                                         dense: true,
+//                                         title: Text(
+//                                           file.name,
+//                                           overflow: TextOverflow.ellipsis,
+//                                         ),
+//                                         trailing: IconButton(
+//                                           icon: const Icon(
+//                                             Icons.remove_circle,
+//                                             color: Colors.red,
+//                                           ),
+//                                           onPressed:
+//                                               () => removeAttachment(index),
+//                                         ),
+//                                       );
+//                                     },
+//                                   ),
+//                                 ),
+//                                 const SizedBox(height: 16),
+//                               ],
+//                               if (attachmentError != null) ...[
+//                                 Text(
+//                                   attachmentError!,
+//                                   style: const TextStyle(
+//                                     color: Colors.red,
+//                                     fontSize: 12,
+//                                   ),
+//                                 ),
+//                                 const SizedBox(height: 16),
+//                               ],
+//                               ElevatedButton.icon(
+//                                 icon: const Icon(Icons.attach_file),
+//                                 label: const Text('Add Photos'),
+//                                 onPressed: pickImageFromCamera,
+//                                 // onPressed: pickAttachments,
+//                               ),
+//                               const SizedBox(height: 24),
+//                               Row(
+//                                 mainAxisAlignment: MainAxisAlignment.end,
+//                                 children: [
+//                                   TextButton(
+//                                     onPressed: () {
+//                                       if (!isLoading)
+//                                         Navigator.of(context).pop();
+//                                     },
+//                                     child: const Text('Cancel'),
+//                                   ),
+//                                   const SizedBox(width: 16),
+//                                   ElevatedButton(
+//                                     onPressed:
+//                                         isLoading
+//                                             ? null
+//                                             : createFeatureWithAttachments,
+//                                     child: const Text('Create'),
+//                                   ),
+//                                 ],
+//                               ),
+//                             ],
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+//                     if (isLoading)
+//                       Positioned.fill(
+//                         child: Container(
+//                           color: Colors.black.withOpacity(0.4),
+//                           child: const Center(
+//                             child: CircularProgressIndicator(),
+//                           ),
+//                         ),
+//                       ),
+//                   ],
+//                 ),
+//               ),
+//             );
+//           },
+//         );
+//       },
+//     );
+//   }
+// }
 
-  const RelatedFeaturesTable({
-    required this.relatedFeatures,
-    required this.relatedFeatureTable,
-    required this.refreshParent,
-    required this.feature,
-    super.key,
-  });
+// class DetailsPage extends StatelessWidget {
+//   final Map<String, dynamic> data;
+//
+//   DetailsPage({required this.data});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: Text('Details')),
+//       body: SingleChildScrollView(
+//         padding: EdgeInsets.all(16),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             Text('Object ID: ${data['objectid'] ?? ''}'),
+//             Text('Scheme Name: ${data['Schemename'] ?? ''}'),
+//             Text('Scheme ID: ${data['SchemeId'] ?? ''}'),
+//             Text('Remark: ${data['Remark'] ?? ''}'),
+//             Text('Officer Name: ${data['Officername'] ?? ''}'),
+//             Text('Physical Progress: ${data['Physical progress'] ?? ''}'),
+//             Text('Financial Progress: ${data['Financial progress'] ?? ''}'),
+//             Text('Survey Date: ${data['survey date'] ?? ''}'),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
 
-  @override
-  _RelatedFeaturesTableState createState() => _RelatedFeaturesTableState();
-}
-
-class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
-  late List<Feature> features;
-  late var maxPrevProgress;
-
-  @override
-  void initState() {
-    super.initState();
-    features = List.from(widget.relatedFeatures);
-    final progressValues =
-        features.map((feature) {
-          debugPrintLong("RelatedFeaturesTable feature.attributes ${feature.attributes}");
-          final rawValue = feature.attributes['intpprogress'];
-          return (rawValue != null) ? rawValue as int : 0;
-        }).toList();
-    debugPrint("RelatedFeaturesTable progressValues $progressValues");
-    maxPrevProgress =
-        progressValues.isNotEmpty
-            ? progressValues.reduce((a, b) => a > b ? a : b)
-            : 0;
-
-  }
-  void debugPrintLong(String message, {int chunkSize = 800}) {
-    final pattern = RegExp('.{1,$chunkSize}', dotAll: true);
-    pattern.allMatches(message).forEach((match) => debugPrint(match.group(0)));
-  }
-  @override
-  Widget build(BuildContext context) {
-    if (features.isEmpty) {
-      return Column(
-        children: [
-          const Text('No related features found.'),
-          ElevatedButton(
-            onPressed: () {
-              _showCreateFeatureDialog(maxPrevProgress);
-            },
-            child: const Text('Add Related Feature'),
-          ),
-        ],
-      );
-    }
-
-    final fields = widget.relatedFeatureTable.fields;
-
-    return Column(
-      children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columns: [
-              ...fields.map(
-                (field) => DataColumn(label: Text(field.alias ?? field.name)),
-              ),
-              // No Actions column
-            ],
-            rows:
-                features.map((feature) {
-                  return DataRow(
-                    cells: [
-                      ...fields.map((field) {
-                        final value = feature.attributes[field.name];
-                        return DataCell(
-                          Text(value?.toString() ?? ''),
-                          // No editing or deletion enabled
-                        );
-                      }).toList(),
-                      // No delete action cell
-                    ],
-                  );
-                }).toList(),
-          ),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            _showCreateFeatureDialog(maxPrevProgress);
-          },
-          child: const Text('Add Related Feature'),
-        ),
-      ],
-    );
-  }
-
-
-  void _showCreateFeatureDialog(int maxPrevProgress) {
-    debugPrint("widget.relatedFeatureTable.fields ${widget.relatedFeatureTable.fields}");
-    final intpProgressField = widget.relatedFeatureTable.fields.firstWhere(
-      (f) => f.name.toLowerCase() == 'intpprogress',
-      orElse: () => throw Exception('intpprogress field not found'),
-    );
-
-    final List<dynamic> codedValuesJson =
-        intpProgressField.domain?.toJson()['codedValues'] ?? [];
-    final List<Map<String, dynamic>> codedValues =
-        codedValuesJson.map((cv) {
-          return {'code': cv['code'], 'name': cv['name']};
-        }).toList();
-
-    int? selectedCode;
-    List<PlatformFile> attachedFiles = [];
-    final DateTime defaultDate = DateTime.now();
-    final _formKey = GlobalKey<FormState>();
-    String? attachmentError;
-
-    bool isLoading = false;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            Future<void> pickAttachments() async {
-              FilePickerResult? result = await FilePicker.platform.pickFiles(
-                type: FileType.custom,
-                allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'txt'],
-                allowMultiple: true,
-              );
-              if (result != null) {
-                setState(() {
-                  attachedFiles.addAll(result.files);
-                  attachmentError = null; // Clear error if files added
-                });
-              }
-            }
-
-            Future<void> pickImageFromCamera() async {
-              final ImagePicker picker = ImagePicker();
-              final XFile? photo = await picker.pickImage(source: ImageSource.camera);
-
-              if (photo != null) {
-                final File file = File(photo.path);
-                final int fileSize = await file.length();
-
-                setState(() {
-                  attachedFiles.add(
-                    PlatformFile(
-                      name: photo.name,
-                      path: photo.path,
-                      size: fileSize,
-                      bytes: null,
-                      // no 'extension' param here; can be inferred from `name`
-                    ),
-                  );
-                  attachmentError = null;
-                });
-              }
-            }
-
-            void removeAttachment(int index) {
-              setState(() {
-                attachedFiles.removeAt(index);
-                if (attachedFiles.isEmpty) {
-                  attachmentError = 'Please add at least one attachment';
-                } else {
-                  attachmentError = null;
-                }
-              });
-            }
-
-            String mimeTypeForExtension(String ext) {
-              switch (ext.toLowerCase()) {
-                case '.jpg':
-                case '.jpeg':
-                  return 'image/jpeg';
-                case '.png':
-                  return 'image/png';
-                case '.pdf':
-                  return 'application/pdf';
-                case '.txt':
-                  return 'text/plain';
-                default:
-                  return 'application/octet-stream';
-              }
-            }
-
-            Future<void> createFeatureWithAttachments() async {
-              if (!_formKey.currentState!.validate()) return;
-
-              if (attachedFiles.isEmpty) {
-                setState(() {
-                  attachmentError = 'Please add at least one attachment';
-                });
-                return;
-              } else {
-                setState(() {
-                  attachmentError = null;
-                });
-              }
-
-              _formKey.currentState!.save();
-
-              setState(() {
-                isLoading = true;
-              });
-              var intpProgressField ="intpprogress";
-              if(widget.feature.attributes.containsKey("subtype"))
-              {
-                int subtype = widget.feature.attributes['subtype'];
-                if(subtype==1)
-                {
-                  intpProgressField = "intpprogressc";
-                }
-              }
-
-              Map<String, dynamic> newAttributes = {
-                'GUID': widget.feature.attributes['globalid'],
-                intpProgressField: selectedCode,
-                'surveyordate': defaultDate,
-              };
-
-              try {
-                final newFeature =
-                    widget.relatedFeatureTable.createFeature(
-                          attributes: newAttributes,
-                        )
-                        as ArcGISFeature;
-                await widget.relatedFeatureTable.addFeature(newFeature);
-
-                for (final attachedFile in attachedFiles) {
-                  File file = File(attachedFile.path!);
-                  final bytes = await file.readAsBytes();
-                  final ext = path.extension(file.path).toLowerCase();
-                  final name = path.basename(file.path);
-                  final compressedBytes = await FlutterImageCompress.compressWithFile(
-                    file.path,
-                    quality: 50, // 0-100, lower for more compression
-                    format: ext == ".jpg" ? CompressFormat.jpeg : CompressFormat.png,
-                  );
-                  await newFeature.addAttachment(
-                    name: name,
-                    contentType: mimeTypeForExtension(ext),
-                    data: compressedBytes!,
-                  );
-                }
-
-                if (widget.relatedFeatureTable is ServiceFeatureTable) {
-                  final serviceFeatureTable =
-                      widget.relatedFeatureTable as ServiceFeatureTable;
-                  await serviceFeatureTable.updateFeature(newFeature);
-                  final applyEditsResult =
-                      await serviceFeatureTable.applyEdits();
-                  if (applyEditsResult.isEmpty) {
-                    throw Exception(
-                      'ApplyEdits returned no results, attachment may not be added',
-                    );
-                  }
-                } else if (widget.relatedFeatureTable
-                    is GeodatabaseFeatureTable) {
-                  final geodatabaseFeatureTable =
-                      widget.relatedFeatureTable as GeodatabaseFeatureTable;
-                  await geodatabaseFeatureTable.updateFeature(newFeature);
-                } else {
-                  throw Exception(
-                    'Unsupported feature table type for updating features',
-                  );
-                }
-
-                setState(() {
-                  attachedFiles.clear();
-                  features.add(newFeature);
-                });
-
-                widget.refreshParent();
-
-                Navigator.of(context).pop();
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Create failed: $e')));
-                }
-              } finally {
-                if (mounted) {
-                  setState(() {
-                    isLoading = false;
-                  });
-                }
-              }
-            }
-
-            return Dialog(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 350),
-                child: Stack(
-                  children: [
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: AbsorbPointer(
-                        absorbing: isLoading,
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Add Progress Entry',
-                                style:
-                                    Theme.of(context).textTheme.headlineSmall,
-                              ),
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                readOnly: true,
-                                initialValue: DateFormat(
-                                  'yyyy-MM-dd',
-                                ).format(defaultDate),
-                                decoration: const InputDecoration(
-                                  labelText: 'Survey Date',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              DropdownButtonFormField<int>(
-                                isExpanded: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Physical Progress',
-                                  border: OutlineInputBorder(),
-                                ),
-                                value: selectedCode,
-                                items:
-                                    codedValues.map((cv) {
-                                      return DropdownMenuItem<int>(
-                                        value: cv['code'],
-                                        child: Text(cv['name']),
-                                      );
-                                    }).toList(),
-                                onChanged:
-                                    (val) => setState(() => selectedCode = val),
-                                validator: (val) {
-                                  if (val == null) {
-                                    return 'Please select a physical progress status';
-                                  }
-                                  if (val <= maxPrevProgress) {
-                                    return 'Progress must be higher than last recorded ($maxPrevProgress)';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              if (attachedFiles.isNotEmpty) ...[
-                                SizedBox(
-                                  height: 150,
-                                  child: ListView.builder(
-                                    shrinkWrap: true,
-                                    physics:
-                                        const AlwaysScrollableScrollPhysics(),
-                                    itemCount: attachedFiles.length,
-                                    itemBuilder: (context, index) {
-                                      final file = attachedFiles[index];
-                                      return ListTile(
-                                        dense: true,
-                                        title: Text(
-                                          file.name,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        trailing: IconButton(
-                                          icon: const Icon(
-                                            Icons.remove_circle,
-                                            color: Colors.red,
-                                          ),
-                                          onPressed:
-                                              () => removeAttachment(index),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-                              if (attachmentError != null) ...[
-                                Text(
-                                  attachmentError!,
-                                  style: const TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-                              ElevatedButton.icon(
-                                icon: const Icon(Icons.attach_file),
-                                label: const Text('Add Photos'),
-                                onPressed: pickImageFromCamera,
-                                // onPressed: pickAttachments,
-                              ),
-                              const SizedBox(height: 24),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  TextButton(
-                                    onPressed: () {
-                                      if (!isLoading)
-                                        Navigator.of(context).pop();
-                                    },
-                                    child: const Text('Cancel'),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  ElevatedButton(
-                                    onPressed:
-                                        isLoading
-                                            ? null
-                                            : createFeatureWithAttachments,
-                                    child: const Text('Create'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (isLoading)
-                      Positioned.fill(
-                        child: Container(
-                          color: Colors.black.withOpacity(0.4),
-                          child: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}

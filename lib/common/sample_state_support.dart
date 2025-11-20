@@ -252,34 +252,61 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
       VoidCallback onFormSaved,
       List<Map<String, dynamic>> schemeList
       ) async {
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder:
-          (context) => Padding(
-        padding: MediaQuery.of(context).viewInsets,
-        child: AttributeEditForm(
-          feature: feature,
-          featureTable: layer.featureTable as ArcGISFeatureTable,
-          featurePopup: featurePopup,
-          onFormSaved: () {
-            Navigator.pop(context);
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Feature successfully updated'),
-                ),
-              );
-            }
-            onFormSaved.call();
-          },
-          // onFormSaved: onFormSaved,
-          parentScaffoldContext: context,
-          isOffline: isOffline,
-          schemeList: schemeList,
+
+    Navigator.push(
+        context,
+        MaterialPageRoute(
+        builder: (context) => AttributeEditForm(
+      feature: feature,
+      featureTable: layer.featureTable as ArcGISFeatureTable,
+      featurePopup: featurePopup,
+      onFormSaved: () {
+        Navigator.pop(context);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Feature successfully updated'),
+            ),
+          );
+        }
+        onFormSaved.call();
+      },
+      // onFormSaved: onFormSaved,
+      parentScaffoldContext: context,
+      isOffline: isOffline,
+      schemeList: schemeList,
+    ),
         ),
-      ),
     );
+
+    // await showModalBottomSheet(
+    //   context: context,
+    //   isScrollControlled: true,
+    //   builder:
+    //       (context) => Padding(
+    //     padding: MediaQuery.of(context).viewInsets,
+    //     child: AttributeEditForm(
+    //       feature: feature,
+    //       featureTable: layer.featureTable as ArcGISFeatureTable,
+    //       featurePopup: featurePopup,
+    //       onFormSaved: () {
+    //         Navigator.pop(context);
+    //         if (mounted) {
+    //           ScaffoldMessenger.of(context).showSnackBar(
+    //             const SnackBar(
+    //               content: Text('Feature successfully updated'),
+    //             ),
+    //           );
+    //         }
+    //         onFormSaved.call();
+    //       },
+    //       // onFormSaved: onFormSaved,
+    //       parentScaffoldContext: context,
+    //       isOffline: isOffline,
+    //       schemeList: schemeList,
+    //     ),
+    //   ),
+    // );
   }
 
   Future<double> calculateDistanceBetweenPoints({
