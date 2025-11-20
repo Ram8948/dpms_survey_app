@@ -1068,8 +1068,8 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
     _mapViewController.interactionOptions.rotateEnabled = false;
     _offlineMapTask = OfflineMapTask.withOnlineMap(_map!);
     // _offlineMapTask = OfflineMapTask.withPortalItem(portalItem);
-    // _initializeLocation();
-    hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
+    _initializeLocation();
+    // hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
     setState(() => _ready = true);
   }
 

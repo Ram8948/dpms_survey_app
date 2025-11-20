@@ -90,8 +90,8 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
       _layers = _map!.operationalLayers;
       _mapViewController.arcGISMap = _map;
       // Start device location display here
-      // _initializeLocation();
-      hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
+      _initializeLocation();
+      // hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
     }
   }
 
