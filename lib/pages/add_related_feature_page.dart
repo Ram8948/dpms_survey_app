@@ -28,19 +28,23 @@ class AddRelatedFeaturePage extends StatefulWidget {
 class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
   final _formKey = GlobalKey<FormState>();
   int? selectedCode;
+  int? selectedCodeF;
   List<PlatformFile> attachedFiles = [];
   String? attachmentError;
   bool isLoading = false;
+  final TextEditingController _remarkController = TextEditingController();
+  final TextEditingController _officerNameController = TextEditingController();
 
   final DateTime defaultDate = DateTime.now();
 
   late final intpProgressField;
   late final List<Map<String, dynamic>> codedValues;
+  late final List<Map<String, dynamic>> codedValuesF;
 
   @override
   void initState() {
     super.initState();
-
+    debugPrint("widget.relatedFeatureTable.fields ${widget.relatedFeatureTable.fields}");
     final intpProgressFieldObj = widget.relatedFeatureTable.fields.firstWhere(
           (f) => f.name.toLowerCase() == 'intpprogress',
       orElse: () => throw Exception('intpprogress field not found'),
@@ -50,6 +54,17 @@ class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
     final List<dynamic> codedValuesJson =
         intpProgressFieldObj.domain?.toJson()['codedValues'] ?? [];
     codedValues = codedValuesJson.map((cv) {
+      return {'code': cv['code'], 'name': cv['name']};
+    }).toList();
+
+    final intfProgressFieldObj = widget.relatedFeatureTable.fields.firstWhere(
+          (f) => f.name.toLowerCase() == 'intfprogress',
+      orElse: () => throw Exception('intpprogress field not found'),
+    );
+
+    final List<dynamic> codedValuesJsonF =
+        intfProgressFieldObj.domain?.toJson()['codedValues'] ?? [];
+    codedValuesF = codedValuesJsonF.map((cv) {
       return {'code': cv['code'], 'name': cv['name']};
     }).toList();
 
@@ -147,7 +162,12 @@ class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
       Map<String, dynamic> newAttributes = {
         'GUID': widget.parentFeature.attributes['globalid'],
         intpProgressField: selectedCode,
+        if (selectedCodeF != null) 'intfprogress': selectedCodeF,
         'surveyordate': defaultDate,
+        'schemename': widget.parentFeature.attributes["name"],
+        'schemeid': widget.parentFeature.attributes["id"],
+        'remarks': _remarkController.text,
+        'officername': _officerNameController.text,
       };
 
       final newFeature = widget.relatedFeatureTable.createFeature(
@@ -230,6 +250,24 @@ class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
                   children: [
                     TextFormField(
                       readOnly: true,
+                      initialValue: widget.parentFeature.attributes["name"],
+                      decoration: const InputDecoration(
+                        labelText: 'Scheme Name',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      readOnly: true,
+                      initialValue: widget.parentFeature.attributes["id"].toString(),
+                      decoration: const InputDecoration(
+                        labelText: 'Scheme Id',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      readOnly: true,
                       initialValue: DateFormat('yyyy-MM-dd').format(defaultDate),
                       decoration: const InputDecoration(
                         labelText: 'Survey Date',
@@ -262,11 +300,51 @@ class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
                       },
                     ),
                     const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Financial Progress',
+                        border: OutlineInputBorder(),
+                      ),
+                      value: selectedCodeF,
+                      items: codedValuesF.map((cv) {
+                        return DropdownMenuItem<int>(
+                          value: cv['code'],
+                          child: Text(cv['name']),
+                        );
+                      }).toList(),
+                      onChanged: (val) => setState(() => selectedCodeF = val),
+                      // validator: (val) {
+                      //   if (val == null) {
+                      //     return 'Please select a financial progress status';
+                      //   }
+                      //   // if (val! <= widget.maxPrevProgress) {
+                      //   //   return 'Progress must be higher than last recorded (${widget.maxPrevProgress})';
+                      //   // }
+                      //   return null;
+                      // },
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
+                      controller: _remarkController,
                       decoration: const InputDecoration(
                         labelText: 'Remark',
                         border: OutlineInputBorder(),
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _officerNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Officer Name',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Officer Name is required';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     if (attachedFiles.isNotEmpty)

@@ -901,7 +901,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         );
         // final relatedFeatures = await getRelatedFeatures(widget.feature);
         final relatedFeatures = await _queryRelatedFeatures(widget.feature);
-        debugPrint("relatedFeatures $relatedFeatures");
+        debugPrint("relatedFeatures ASD $relatedFeatures");
         if (relatedFeatures.isEmpty) {
           final DateTime defaultDate = DateTime.now();
           var intpProgressField ="intpprogress";
@@ -920,7 +920,8 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
             'GUID': widget.feature.attributes['globalid'], // link to parent
             intpProgressField: initProgress,
             'surveyordate': defaultDate, // example physical progress code
-            // other necessary attributes
+          'schemename': widget.feature.attributes["name"],
+          'schemeid': widget.feature.attributes["id"],
           };
           final newFeature =
           arcGISFeatureTable.createFeature(attributes: newAttributes)
@@ -988,6 +989,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     } on ArcGISException catch (e) {
       debugPrint("ArcGISException $e");
     }
+    debugPrint("selectedFeature.attributes ${selectedFeature.attributes}");
     return Future.value();
   }
 
