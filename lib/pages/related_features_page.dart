@@ -234,33 +234,27 @@ class RelatedFeaturesTable extends StatelessWidget {
                 child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                // columns: [
-                //   ...fields.map(
-                //         (field) => DataColumn(label: Text(field.alias ?? field.name)),
-                //   ),
-                // ],
                 columns: [
                   ...visibleFields.map(
                         (field) => DataColumn(
-                      label: Text(field.alias ?? field.name),
+                      label: SizedBox(
+                        width: 100, // Fixed width for the column header
+                        child: Text(field.alias ?? field.name),
+                      ),
                     ),
                   ),
                 ],
                 rows: relatedFeatures.map((feature) {
                   return DataRow(
-                    // cells: [
-                    //   ...fields.map((field) {
-                    //     final value = feature.attributes[field.name];
-                    //     return DataCell(
-                    //       Text(value?.toString() ?? ''),
-                    //     );
-                    //   }).toList(),
-                    // ],
                     cells: [
                       ...visibleFields.map((field) {
                         final value = feature.attributes[field.name];
                         return DataCell(
-                          Text(value?.toString() ?? ''),
+                          // Text(value?.toString() ?? ''),
+                          SizedBox(
+                            width: 100,  // Match width to header for alignment
+                            child: Text(value?.toString() ?? ''),
+                          ),
                         );
                       }).toList(),
                     ],
