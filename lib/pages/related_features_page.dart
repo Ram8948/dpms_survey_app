@@ -208,6 +208,18 @@ class RelatedFeaturesTable extends StatelessWidget {
 
     final fields = relatedFeatureTable.fields;
 
+    // Names as they come in attributes / field.name
+    const visibleFieldNames = [
+      'Scheme Name',
+      'Scheme Id',
+      'Physical Progress',
+      'Financial Progress',
+    ];
+
+    final visibleFields = fields
+        .where((f) => visibleFieldNames.contains(f.alias))
+        .toList();
+    debugPrint("visibleFields $visibleFields");
     return Column(
       children: [
         Expanded(
@@ -222,15 +234,30 @@ class RelatedFeaturesTable extends StatelessWidget {
                 child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
+                // columns: [
+                //   ...fields.map(
+                //         (field) => DataColumn(label: Text(field.alias ?? field.name)),
+                //   ),
+                // ],
                 columns: [
-                  ...fields.map(
-                        (field) => DataColumn(label: Text(field.alias ?? field.name)),
+                  ...visibleFields.map(
+                        (field) => DataColumn(
+                      label: Text(field.alias ?? field.name),
+                    ),
                   ),
                 ],
                 rows: relatedFeatures.map((feature) {
                   return DataRow(
+                    // cells: [
+                    //   ...fields.map((field) {
+                    //     final value = feature.attributes[field.name];
+                    //     return DataCell(
+                    //       Text(value?.toString() ?? ''),
+                    //     );
+                    //   }).toList(),
+                    // ],
                     cells: [
-                      ...fields.map((field) {
+                      ...visibleFields.map((field) {
                         final value = feature.attributes[field.name];
                         return DataCell(
                           Text(value?.toString() ?? ''),
