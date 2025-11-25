@@ -40,7 +40,29 @@ class DetailsPage extends StatelessWidget {
           children: visibleFields.map((field) {
             final fieldName = field.name;
             final fieldAlias = field.alias ?? field.name;
-            final value = data[fieldName];
+            // final value = data[fieldName];
+
+            String displayValue;
+
+            // Check if domain exists and rawValue is not null
+            final Map<String, dynamic>? domainJson = field.domain?.toJson();
+            final List<dynamic>? codedValues = domainJson?['codedValues'];
+
+            if (codedValues != null) {
+              // Find the codedValue matching rawValue
+              final match = codedValues.firstWhere(
+                    (cv) => cv['code'] == data[fieldName],
+                orElse: () => null,
+              );
+
+              if (match != null) {
+                displayValue = match['name'] ?? data[fieldName].toString();
+              } else {
+                displayValue = data[fieldName].toString();
+              }
+            } else {
+              displayValue = data[fieldName].toString();
+            }
 
             return Container(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -65,7 +87,7 @@ class DetailsPage extends StatelessWidget {
                   Expanded(
                     flex: 5,
                     child: Text(
-                      value != null ? value.toString() : '-',
+                      displayValue != null ? displayValue.toString() : '-',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.black54,
                       ),

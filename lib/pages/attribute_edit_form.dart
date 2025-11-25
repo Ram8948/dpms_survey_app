@@ -458,26 +458,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
             feature: widget.feature,
             relatedFeatureTable: relatedTables!.first,
             mainFeatureTable: _mainFeatureTable!,
-            // refreshParent: () async {
-            //   // Refresh list after CRUD
-            //   // final freshRelated = await getRelatedFeatures(
-            //   //   widget.feature,
-            //   // );
-            //   final freshRelated = await _queryRelatedFeatures(widget.feature);
-            //   setState(() {
-            //     debugPrint(
-            //       "refreshParent ${_relatedFeatures.length}",
-            //     );
-            //     debugPrint(
-            //       "refreshParent freshRelated ${freshRelated.length}",
-            //     );
-            //     _relatedFeatures = freshRelated;
-            //     debugPrint(
-            //       "refreshParent ${_relatedFeatures.length}",
-            //     );
-            //   });
-            // },
-            // feature: widget.feature,
           ),
         ),
       );

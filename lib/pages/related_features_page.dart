@@ -220,6 +220,11 @@ class RelatedFeaturesTable extends StatelessWidget {
         .where((f) => visibleFieldNames.contains(f.alias))
         .toList();
     debugPrint("visibleFields $visibleFields");
+    for (var field in visibleFields) {
+      debugPrint('Field alias: ${field.alias}, Field name: ${field.name}');
+      debugPrint('field.domain: ${field.domain}');
+    }
+
     return Column(
       children: [
         Expanded(
@@ -234,30 +239,52 @@ class RelatedFeaturesTable extends StatelessWidget {
                 child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                columns: [
-                  ...visibleFields.map(
+                columns: visibleFields.map(
                         (field) => DataColumn(
                       label: SizedBox(
-                        width: 100, // Fixed width for the column header
+                        width: 150, // Fixed width for the column header
                         child: Text(field.alias ?? field.name),
                       ),
                     ),
-                  ),
-                ],
+                  ).toList(),
                 rows: relatedFeatures.map((feature) {
                   return DataRow(
-                    cells: [
-                      ...visibleFields.map((field) {
-                        final value = feature.attributes[field.name];
+                    cells: visibleFields.map((field) {
+                        // final value = feature.attributes[field.name];
+
+                        final rawValue = feature.attributes[field.name];
+
+                        String displayValue;
+
+                        // Check if domain exists and rawValue is not null
+                        final Map<String, dynamic>? domainJson = field.domain?.toJson();
+                        final List<dynamic>? codedValues = domainJson?['codedValues'];
+
+                        if (codedValues != null) {
+                          // Find the codedValue matching rawValue
+                          final match = codedValues.firstWhere(
+                                (cv) => cv['code'] == rawValue,
+                            orElse: () => null,
+                          );
+
+                          if (match != null) {
+                            displayValue = match['name'] ?? rawValue.toString();
+                          } else {
+                            displayValue = rawValue.toString();
+                          }
+                        } else {
+                          displayValue = rawValue.toString();
+                        }
+
                         return DataCell(
                           // Text(value?.toString() ?? ''),
                           SizedBox(
-                            width: 100,  // Match width to header for alignment
-                            child: Text(value?.toString() ?? ''),
+                            width:150,  // Match width to header for alignment
+                            child: Text(displayValue ?? ''),
                           ),
                         );
                       }).toList(),
-                    ],
+
                     onSelectChanged: (selected) {
                       if (selected == true) {
                         Navigator.push(
