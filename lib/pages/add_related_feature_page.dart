@@ -326,14 +326,6 @@ class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller: _remarkController,
-                      decoration: const InputDecoration(
-                        labelText: 'Remark',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
                       controller: _officerNameController,
                       decoration: const InputDecoration(
                         labelText: 'Officer Name',
@@ -345,6 +337,14 @@ class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
                         }
                         return null;
                       },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _remarkController,
+                      decoration: const InputDecoration(
+                        labelText: 'Remark',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     if (attachedFiles.isNotEmpty)

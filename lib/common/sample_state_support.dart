@@ -42,14 +42,14 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
                   openAttributeEditForm(feature, featureLayer,featurePopup,isOffline,onFormSaved,schemeList);
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete Feature', style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.pop(context); // Close the bottom sheet
-                  _deleteFeature(feature, featureLayer,isOffline);
-                },
-              ),
+              // ListTile(
+              //   leading: const Icon(Icons.delete, color: Colors.red),
+              //   title: const Text('Delete Feature', style: TextStyle(color: Colors.red)),
+              //   onTap: () {
+              //     Navigator.pop(context); // Close the bottom sheet
+              //     _deleteFeature(feature, featureLayer,isOffline);
+              //   },
+              // ),
             ],
           ),
         );
@@ -343,10 +343,10 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
       return 0;
     }
   }
-  final distanceWithin = 1000;
+
   final hardcodedPoint = ArcGISPoint(
-    x: 76.38878535043176,
-    y: 19.1270084472033,
+    x: 73.77445179860075,
+    y: 18.550654582039602,
     spatialReference: SpatialReference.wgs84,
   );
   late SimulatedLocationDataSource _simulatedLocationDataSource;

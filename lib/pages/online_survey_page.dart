@@ -61,19 +61,39 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
       connection: PortalConnection.authenticated,
     );
     await portal.load();
-    final licenseInfo = await portal.fetchLicenseInfo();
-    print("License status: ${licenseInfo.toJson()}");
+    print("portal status: ${portal.loadStatus}");
+    // // final licenseType = ArcGISEnvironment.getLicense().licenseType;
+    // // final licenseLevel = ArcGISEnvironment.getLicense().licenseLevel;
+    // // final expiry = ArcGISEnvironment.getLicense().expiry;
+    // // print('Before Current license type: ${licenseType}');
+    // // print('Before Current licenseLevel : ${licenseLevel}');
+    // // print('Before Current license expiry : ${expiry}');
+    // final licenseInfo = await portal.fetchLicenseInfo();
+    // print("License status: ${licenseInfo.toJson()}");
     // final licenseResult = ArcGISEnvironment.setLicenseUsingInfo(licenseInfo);
-    // print("License status: ${licenseResult.licenseStatus}");
-    // print("License extensionsStatus: ${licenseResult.extensionsStatus}");
-    // print('Current license type: ${licenseResult.runtimeType}');
-    final licenseType = ArcGISEnvironment.getLicense().licenseType;
-    final licenseLevel = ArcGISEnvironment.getLicense().licenseLevel;
-    final expiry = ArcGISEnvironment.getLicense().expiry;
-    print('Current license type: ${licenseType}');
-    print('Current licenseLevel : ${licenseLevel}');
-    print('Current license expiry : ${expiry}');
-    // final licenseResult = ArcGISEnvironment.setLicenseUsingKey(licenseInfo.toJson()["licenseString"]);
+    // print("License licenseResult: ${licenseResult.licenseStatus}");
+    // print("License licenseResult: ${licenseResult.extensionsStatus}");
+    // print("License licenseResult: ${licenseResult.runtimeType}");
+    //
+    // // final licenseResult = ArcGISEnvironment.setLicenseUsingKey(
+    // //   'runtimelite,1000,rud6601813501,none,ZZ0RJAY3FLLE9KB10178',
+    // // );
+    // // print("License licenseResult: ${licenseResult.licenseStatus}");
+    // // print("License licenseResult: ${licenseResult.extensionsStatus}");
+    // // print("License licenseResult: ${licenseResult.runtimeType}");
+    // // // final licenseResult = ArcGISEnvironment.setLicenseUsingInfo(licenseInfo);
+    // // // print("License status: ${licenseResult.licenseStatus}");
+    // // // print("License extensionsStatus: ${licenseResult.extensionsStatus}");
+    // // // print('Current license type: ${licenseResult.runtimeType}');
+    //
+    // final licenseType = ArcGISEnvironment.getLicense().licenseType;
+    // final licenseLevel = ArcGISEnvironment.getLicense().licenseLevel;
+    // final expiry = ArcGISEnvironment.getLicense().expiry;
+    // print('Current license type: ${licenseType}');
+    // print('Current licenseLevel : ${licenseLevel}');
+    // print('Current license expiry : ${expiry}');
+
+    // // final licenseResult = ArcGISEnvironment.setLicenseUsingKey(licenseInfo.toJson()["licenseString"]);
     // _loadBasemapsFuture = loadBasemaps(portal);
     final portalItem = PortalItem.withPortalAndItemId(
       portal: portal,
@@ -739,9 +759,10 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
       ArcGISPoint? currentLocation = _mapViewController.locationDisplay.mapLocation;
       if (mapPoint != null && currentLocation != null) {
         double distance = await calculateDistanceBetweenPoints(currentLocation: currentLocation, tappedPoint: mapPoint);
-        if(distance>distanceWithin)
+        if(distance>1000)
         {
-          showMessageDialog("You are not within the range of $distanceWithin Meter");
+          // showMessageDialog("You are not within the range of 20 Meter");
+          showMessageDialog("You are not within the range of 1Km");
           return;
         }
         // {
@@ -764,7 +785,7 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
         if (result.geoElements.isNotEmpty &&
             result.layerContent is FeatureLayer) {
           final featureLayer = result.layerContent as FeatureLayer;
-          final feature = result.geoElements.last as ArcGISFeature;
+          final feature = result.geoElements.first as ArcGISFeature;
           _selectedFeatureLayer = featureLayer;
           featureLayer.selectFeatures([feature]);
 

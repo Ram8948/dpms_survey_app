@@ -1,3 +1,4 @@
+import 'package:arcgis_maps/arcgis_maps.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -30,6 +31,10 @@ class _OnlineOfflineModePageState extends State<OnlineOfflineModePage> {
 
   @override
   Widget build(BuildContext context) {
+    // final licenseResult = ArcGISEnvironment.setLicenseUsingKey(
+    //   'runtimelite,1000,rud4548078489,none,5H80TK8ELBK0F5KHT130',
+    // );
+
     return Scaffold(
       extendBodyBehindAppBar: true,  // To allow gradient behind app bar
       // appBar: AppBar(

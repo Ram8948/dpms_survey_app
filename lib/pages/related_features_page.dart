@@ -210,15 +210,18 @@ class RelatedFeaturesTable extends StatelessWidget {
 
     // Names as they come in attributes / field.name
     const visibleFieldNames = [
-      'Scheme Name',
-      'Scheme Id',
+      'Surveyor Date',
       'Physical Progress',
       'Financial Progress',
+      'Scheme Name',
+      'Scheme Id',
     ];
 
     final visibleFields = fields
         .where((f) => visibleFieldNames.contains(f.alias))
         .toList();
+    // Sort visibleFields based on the order of aliases in visibleFieldNames
+    visibleFields.sort((a, b) => visibleFieldNames.indexOf(a.alias).compareTo(visibleFieldNames.indexOf(b.alias)));
     debugPrint("visibleFields $visibleFields");
     for (var field in visibleFields) {
       debugPrint('Field alias: ${field.alias}, Field name: ${field.name}');

@@ -372,6 +372,13 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
       // final licenseInfo = await portal.fetchLicenseInfo();
       // final licenseResult = ArcGISEnvironment.setLicenseUsingInfo(licenseInfo);
 
+      // ArcGISEnvironment.setLicenseUsingKey(
+      //   'runtimelite,1000,rud6601813501,none,ZZ0RJAY3FLLE9KB10178',
+      // );
+      // print("License licenseResult: ${licenseResult.licenseStatus}");
+      // print("License licenseResult: ${licenseResult.extensionsStatus}");
+      // print("License licenseResult: ${licenseResult.runtimeType}");
+
       final portalItem = PortalItem.withPortalAndItemId(
         portal: portal,
         itemId: widget.webMapItemId,
@@ -621,9 +628,10 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
     ArcGISPoint? currentLocation = _mapViewController.locationDisplay.mapLocation;
     if (mapPoint != null && currentLocation != null) {
       double distance = await calculateDistanceBetweenPoints(currentLocation: currentLocation, tappedPoint: mapPoint);
-      if(distance>distanceWithin)
+      if(distance>1000)
       {
-        showMessageDialog("You are not within the range of $distanceWithin Meter");
+        // showMessageDialog("You are not within the range of 20 Meter");
+        showMessageDialog("You are not within the range of 1Km");
         return;
       }
     }
@@ -692,6 +700,8 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
         );
         feature?.geometry = normalizedGeometry;
 
+        print("_selectedtable ${_selectedtable!.username}");
+        print("_selectedtable ${_selectedtable!.canAdd()}");
         // Add the feature to the local table.
         await _selectedtable!.addFeature(feature!);
 

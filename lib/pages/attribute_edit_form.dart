@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:arcgis_maps/arcgis_maps.dart';
+import 'package:arcgis_maps_toolkit/arcgis_maps_toolkit.dart';
 import 'package:dpmssurveyapp/pages/related_features_page.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -52,10 +53,11 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     final pattern = RegExp('.{1,$chunkSize}', dotAll: true);
     pattern.allMatches(message).forEach((match) => debugPrint(match.group(0)));
   }
-
+  late Future<Map<String, dynamic>> evaluatedElementsFuture;
   @override
   void initState() {
     super.initState();
+    _evaluatePopupExpressions();
     final popupFields = widget.featurePopup.popupDefinition.fields.where(
       (pf) => (pf.isVisible ?? true),
     );
@@ -171,6 +173,18 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     }
   }
 
+  // Add this method to initialize evaluated elements
+  Future<Object> _evaluatePopupExpressions() async {
+    try {
+      await widget.featurePopup.evaluateExpressions();
+      return widget.featurePopup.evaluatedElements;
+    } catch (e) {
+      debugPrint('Error evaluating popup expressions: $e');
+      // Fallback to original attributes if evaluation fails
+      return widget.feature.attributes;
+    }
+  }
+
   String getFeatureTitle() {
     final layerName =
         widget.featureTable.layerInfo?.serviceLayerName ?? 'Feature Layer';
@@ -182,7 +196,22 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     final popupFields = widget.featurePopup.popupDefinition.fields.where(
       (pf) => (pf.isVisible ?? true),
     );
-    final popupFieldList = popupFields.toList();
+
+    final geoElement = widget.featurePopup.geoElement;
+    final attributes = geoElement.attributes;
+    print('=== POPUP DEFINITION FIELDS === ${attributes.toString()}');
+
+    var popupFieldList = popupFields.toList();
+    print('widget.featurePopup.evaluatedElements.length: ${widget.featurePopup.evaluatedElements.length}');
+    for (final element in widget.featurePopup.evaluatedElements) {
+      if (element is FieldsPopupElement && (element.isEvaluated ?? true)) {
+        popupFieldList = element.fields;
+      }
+    }
+    final popupFieldMap = <String, int>{};
+    for (int i = 0; i < popupFieldList.length; i++) {
+      popupFieldMap[popupFieldList[i].fieldName.toLowerCase()] = i;
+    }
 
     final popupFieldNames =
         popupFieldList.map((pf) => pf.fieldName.toLowerCase()).toSet();
@@ -203,6 +232,21 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       );
       return aIndex.compareTo(bIndex);
     });
+
+    // Debug: Print order mapping
+    print('Popup field order:');
+    popupFieldMap.forEach((key, index) =>
+        print('$key -> $index'));
+
+    // return Scaffold(
+    //   appBar: CustomFloatingAppBar(
+    //     title: getFeatureTitle(),
+    //     showBackButton: true,
+    //     onBackPressed: () => Navigator.of(context).pop(),
+    //   ),
+    //   body: PopupView(
+    // popup: widget.featurePopup,
+    // ));
 
     return Scaffold(
     //     appBar: AppBar(
@@ -477,7 +521,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     final isEditable = field.editable;
     final value = _editedAttributes[field.name];
     final isValueBlank = (value == null || (value is String && value.isEmpty));
-    final shouldBeEditable = isEditable || isValueBlank;
+    var shouldBeEditable = isEditable || isValueBlank;
     final readOnlyColor = Colors.grey[200];
 
     PopupField? findPopupField(String fieldName, List<PopupField> popupFields) {
@@ -683,6 +727,11 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       );
     }
 
+    final Set<String> nonEditableFields = {'region', 'circle', 'division', 'name', 'id'};
+
+// Override editable state for protected fields
+    final bool isProtectedField = nonEditableFields.contains(field.name);
+    shouldBeEditable = !isProtectedField;
     // Default text input field
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 5),
