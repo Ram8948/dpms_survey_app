@@ -2,8 +2,7 @@ import 'package:arcgis_maps/arcgis_maps.dart';
 import 'package:flutter/material.dart';
 
 import '../widget/custom_floating_appbar.dart';
-import 'add_related_feature_page.dart';
-import 'attribute_edit_form.dart';
+import 'add_related_feature_page_new.dart';
 import 'details_page.dart';
 
 class RelatedFeaturesPage extends StatefulWidget {

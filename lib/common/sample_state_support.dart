@@ -345,8 +345,8 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
   }
 
   final hardcodedPoint = ArcGISPoint(
-    x: 73.77445179860075,
-    y: 18.550654582039602,
+    x: 73.46793643744329,
+    y: 18.9820617263371,
     spatialReference: SpatialReference.wgs84,
   );
   late SimulatedLocationDataSource _simulatedLocationDataSource;
