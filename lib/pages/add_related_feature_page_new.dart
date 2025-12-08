@@ -27,8 +27,6 @@ class AddRelatedFeaturePage extends StatefulWidget {
 
 class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
   final _formKey = GlobalKey<FormState>();
-  int? selectedCode;
-  int? selectedCodeF;
   List<PlatformFile> attachedFiles = [];
   String? attachmentError;
   bool isLoading = false;
@@ -37,25 +35,84 @@ class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
 
   final DateTime defaultDate = DateTime.now();
 
-  // Controllers for all field types
-  final TextEditingController _physCivilUncCtrl = TextEditingController();
-  final TextEditingController _finCivilUncCtrl = TextEditingController();
-  final TextEditingController _physMechUncCtrl = TextEditingController();
-  final TextEditingController _finMechUncCtrl = TextEditingController();
-  final TextEditingController _physCivilConCtrl = TextEditingController();
-  final TextEditingController _finCivilConCtrl = TextEditingController();
-  final TextEditingController _physMechConCtrl = TextEditingController();
-  final TextEditingController _finMechConCtrl = TextEditingController();
+  // Controllers for all field types - NO LONGER NEEDED FOR DROPDOWNS, BUT KEPT FOR REMAINING TEXTFIELDS
+  // final TextEditingController _physCivilUncCtrl = TextEditingController();
+  // final TextEditingController _finCivilUncCtrl = TextEditingController();
+  // final TextEditingController _physMechUncCtrl = TextEditingController();
+  // final TextEditingController _finMechUncCtrl = TextEditingController();
+  // final TextEditingController _physCivilConCtrl = TextEditingController();
+  // final TextEditingController _finCivilConCtrl = TextEditingController();
+  // final TextEditingController _physMechConCtrl = TextEditingController();
+  // final TextEditingController _finMechConCtrl = TextEditingController();
 
+  // Selected codes for the main physical/financial progress
+  int? selectedCodeP;
+  int? selectedCodeF;
+
+  // Selected codes for the subtype progress fields (Physical/Financial, Civil/Mech, Con/Uncon)
+  int? selectedCodePhysCivilCon;
+  int? selectedCodeFinCivilCon;
+  int? selectedCodePhysMechCon;
+  int? selectedCodeFinMechCon;
+  int? selectedCodePhysCivilUnc;
+  int? selectedCodeFinCivilUnc;
+  int? selectedCodePhysMechUnc;
+  int? selectedCodeFinMechUnc;
+
+  // Field names for the main physical/financial progress
   late final String intpProgressField;
   late final String? intfProgressField;
-  late final List<Map<String, dynamic>> codedValues;
+
+  // Field names for the subtype progress fields
+  late final String physCivilConField;
+  late final String finCivilConField;
+  late final String physMechConField;
+  late final String finMechConField;
+  late final String physCivilUncField;
+  late final String finCivilUncField;
+  late final String physMechUncField;
+  late final String finMechUncField;
+
+  // Coded values for the main physical/financial progress
+  late final List<Map<String, dynamic>> codedValuesP;
   late final List<Map<String, dynamic>> codedValuesF;
+
+  // Coded values for the subtype progress fields
+  late final List<Map<String, dynamic>> codedValuesPhysCivilCon;
+  late final List<Map<String, dynamic>> codedValuesFinCivilCon;
+  late final List<Map<String, dynamic>> codedValuesPhysMechCon;
+  late final List<Map<String, dynamic>> codedValuesFinMechCon;
+  late final List<Map<String, dynamic>> codedValuesPhysCivilUnc;
+  late final List<Map<String, dynamic>> codedValuesFinCivilUnc;
+  late final List<Map<String, dynamic>> codedValuesPhysMechUnc;
+  late final List<Map<String, dynamic>> codedValuesFinMechUnc;
 
   // Subtype determination
   int? _subtype;
   bool get isConventional => _subtype == 1;
   bool get isUnconventional => _subtype == 2;
+
+  /// Helper to find a field by name (case-insensitive)
+  Field? findField(String name) {
+    try {
+      return widget.relatedFeatureTable.fields.firstWhere(
+            (f) => f.name.toLowerCase() == name.toLowerCase(),
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Helper to get coded values from a field, returns empty list if field or domain is missing
+  List<Map<String, dynamic>> getCodedValues(String fieldName) {
+    final field = findField(fieldName);
+    if (field == null || field.domain == null) return [];
+    final List<dynamic> codedValuesJson = field.domain!.toJson()['codedValues'] ?? [];
+    return codedValuesJson.map((cv) {
+      debugPrint("fieldName cv['name'] $fieldName : ${cv['name']}");
+      return {'code': cv['code'], 'name': cv['name']};
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -74,52 +131,43 @@ class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
     _subtype = widget.parentFeature.attributes['subtype'] as int?;
     debugPrint("Subtype: $_subtype (Conventional: $isConventional, Unconventional: $isUnconventional)");
 
-    // Determine progress fields based on subtype
-    String physField = 'intpprogress';
-    String? finField = 'intfprogress';
+    // --- 1. Determine and fetch main progress fields ---
 
-    if (isConventional) {
-      physField = 'intpprogresscon';
-      finField = 'intfprogresscon';
-    } else if (isUnconventional) {
-      physField = 'intpprogresscunc';
-      finField = 'intfprogresscunc';
-    }
+    // Physical Progress (with fallback)
+    intpProgressField = 'intpprogress';
+    codedValuesP = getCodedValues(intpProgressField);
 
-    // Find physical progress field with fallback
-    final intpProgressFieldObj = widget.relatedFeatureTable.fields.firstWhere(
-      (f) => f.name.toLowerCase() == physField.toLowerCase(),
-      orElse: () => widget.relatedFeatureTable.fields.firstWhere(
-        (f) => f.name.toLowerCase() == 'intpprogress',
-        orElse: () => throw Exception('No physical progress field found'),
-      ),
-    );
-    intpProgressField = intpProgressFieldObj.name;
+    intfProgressField = 'intfprogress';
+    codedValuesF = getCodedValues(intfProgressField!);
 
-    final List<dynamic> codedValuesJson = intpProgressFieldObj.domain?.toJson()['codedValues'] ?? [];
-    codedValues = codedValuesJson.map((cv) {
-      return {'code': cv['code'], 'name': cv['name']};
-    }).toList();
 
-    // Find financial progress field with fallback
-    try {
-      final intfProgressFieldObj = widget.relatedFeatureTable.fields.firstWhere(
-        (f) => f.name.toLowerCase() == (finField ?? '').toLowerCase(),
-        orElse: () => widget.relatedFeatureTable.fields.firstWhere(
-          (f) => f.name.toLowerCase() == 'intfprogress',
-          orElse: () => throw Exception('No financial progress field found'),
-        ),
-      );
-      intfProgressField = intfProgressFieldObj.name;
+    // --- 2. Determine and fetch subtype progress fields ---
+    // Conventional - Civil
+    physCivilConField = 'intpprogressccon'; // Assuming 'intpprogresscon' was a typo/general field name
+    finCivilConField = 'intfprogressccon';
+    codedValuesPhysCivilCon = getCodedValues(physCivilConField);
+    codedValuesFinCivilCon = getCodedValues(finCivilConField);
 
-      final List<dynamic> codedValuesJsonF = intfProgressFieldObj.domain?.toJson()['codedValues'] ?? [];
-      codedValuesF = codedValuesJsonF.map((cv) {
-        return {'code': cv['code'], 'name': cv['name']};
-      }).toList();
-    } catch (e) {
-      intfProgressField = null;
-      codedValuesF = [];
-    }
+    // Conventional - Mechanical
+    physMechConField = 'intpprogressmcon';
+    finMechConField = 'intfprogressmcon';
+    codedValuesPhysMechCon = getCodedValues(physMechConField);
+    codedValuesFinMechCon = getCodedValues(finMechConField);
+
+    // Unconventional - Civil
+    physCivilUncField = 'intpprogresscunc';
+    finCivilUncField = 'intfprogresscunc';
+    codedValuesPhysCivilUnc = getCodedValues(physCivilUncField);
+    codedValuesFinCivilUnc = getCodedValues(finCivilUncField);
+
+    // Unconventional - Mechanical
+    physMechUncField = 'intpprogressmunc';
+    finMechUncField = 'intfprogressmunc';
+    codedValuesPhysMechUnc = getCodedValues(physMechUncField);
+    codedValuesFinMechUnc = getCodedValues(finMechUncField);
+
+    // NOTE: The original logic for field names in initState was slightly complex and seemed to point to generic fields.
+    // The new logic assumes specific field names for each component based on the fields used in the build method.
   }
 
   bool hasField(String name) {
@@ -127,20 +175,22 @@ class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
   }
 
   // Conventional field getters - CIVIL
-  bool get hasPhysProgCivilCon => hasField('intpprogresscon');
-  bool get hasFinProgCivilCon => hasField('intfprogresscon');
+  bool get hasPhysProg => codedValuesP.isNotEmpty;
+  bool get hasFinProg => codedValuesF.isNotEmpty;
+
+  // Conventional field getters - CIVIL
+  bool get hasPhysProgCivilCon => codedValuesPhysCivilCon.isNotEmpty;
+  bool get hasFinProgCivilCon => codedValuesFinCivilCon.isNotEmpty;
   // Conventional field getters - MECHANICAL
-  bool get hasPhysProgMechCon => hasField('intpprogressmcon');
-  bool get hasFinProgMechCon => hasField('intfprogressmcon');
+  bool get hasPhysProgMechCon => codedValuesPhysMechCon.isNotEmpty;
+  bool get hasFinProgMechCon => codedValuesFinMechCon.isNotEmpty;
   // Unconventional field getters - CIVIL
-  bool get hasPhysProgCivilUnc => hasField('intpprogresscunc');
-  bool get hasFinProgCivilUnc => hasField('intfprogresscunc');
+  bool get hasPhysProgCivilUnc => codedValuesPhysCivilUnc.isNotEmpty;
+  bool get hasFinProgCivilUnc => codedValuesFinCivilUnc.isNotEmpty;
   // Unconventional field getters - MECHANICAL
-  bool get hasPhysProgMechUnc => hasField('intpprogressmunc');
-  bool get hasFinProgMechUnc => hasField('intfprogressmunc');
-  // Generic fallback
-  bool get hasPhysProg => hasField('intpprogress');
-  bool get hasFinProg => hasField('intfprogress');
+  bool get hasPhysProgMechUnc => codedValuesPhysMechUnc.isNotEmpty;
+  bool get hasFinProgMechUnc => codedValuesFinMechUnc.isNotEmpty;
+  // Generic fallback (already handled by main codedValuesP/F)
 
   Future<void> pickAttachments() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -227,8 +277,6 @@ class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
     try {
       Map<String, dynamic> newAttributes = {
         'GUID': widget.parentFeature.attributes['globalid'],
-        intpProgressField: selectedCode,
-        if (intfProgressField != null && selectedCodeF != null) intfProgressField!: selectedCodeF,
         'surveyordate': defaultDate,
         'schemename': widget.parentFeature.attributes["name"],
         'schemeid': widget.parentFeature.attributes["id"],
@@ -236,31 +284,47 @@ class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
         'officername': _officerNameController.text,
       };
 
-      // Add subtype-specific TextField values
+      // Add main progress dropdown values
+      if (selectedCodeP != null) {
+        newAttributes[intpProgressField] = selectedCodeP;
+      }
+      if (selectedCodeF != null && intfProgressField != null) {
+        newAttributes[intfProgressField!] = selectedCodeF;
+      }
+
+      // Add subtype-specific Dropdown values
       if (isConventional) {
         // CIVIL Conventional
-        if (hasPhysProgCivilCon && _physCivilConCtrl.text.trim().isNotEmpty)
-          newAttributes['intpprogresscon'] = num.tryParse(_physCivilConCtrl.text.trim()) ?? _physCivilConCtrl.text.trim();
-        if (hasFinProgCivilCon && _finCivilConCtrl.text.trim().isNotEmpty)
-          newAttributes['intfprogresscon'] = num.tryParse(_finCivilConCtrl.text.trim()) ?? _finCivilConCtrl.text.trim();
+        if (hasPhysProgCivilCon && selectedCodePhysCivilCon != null) {
+          newAttributes[physCivilConField] = selectedCodePhysCivilCon;
+        }
+        if (hasFinProgCivilCon && selectedCodeFinCivilCon != null) {
+          newAttributes[finCivilConField] = selectedCodeFinCivilCon;
+        }
 
         // MECHANICAL Conventional
-        if (hasPhysProgMechCon && _physMechConCtrl.text.trim().isNotEmpty)
-          newAttributes['intpprogressmcon'] = num.tryParse(_physMechConCtrl.text.trim()) ?? _physMechConCtrl.text.trim();
-        if (hasFinProgMechCon && _finMechConCtrl.text.trim().isNotEmpty)
-          newAttributes['intfprogressmcon'] = num.tryParse(_finMechConCtrl.text.trim()) ?? _finMechConCtrl.text.trim();
+        if (hasPhysProgMechCon && selectedCodePhysMechCon != null) {
+          newAttributes[physMechConField] = selectedCodePhysMechCon;
+        }
+        if (hasFinProgMechCon && selectedCodeFinMechCon != null) {
+          newAttributes[finMechConField] = selectedCodeFinMechCon;
+        }
       } else if (isUnconventional) {
         // CIVIL Unconventional
-        if (hasPhysProgCivilUnc && _physCivilUncCtrl.text.trim().isNotEmpty)
-          newAttributes['intpprogresscunc'] = num.tryParse(_physCivilUncCtrl.text.trim()) ?? _physCivilUncCtrl.text.trim();
-        if (hasFinProgCivilUnc && _finCivilUncCtrl.text.trim().isNotEmpty)
-          newAttributes['intfprogresscunc'] = num.tryParse(_finCivilUncCtrl.text.trim()) ?? _finCivilUncCtrl.text.trim();
+        if (hasPhysProgCivilUnc && selectedCodePhysCivilUnc != null) {
+          newAttributes[physCivilUncField] = selectedCodePhysCivilUnc;
+        }
+        if (hasFinProgCivilUnc && selectedCodeFinCivilUnc != null) {
+          newAttributes[finCivilUncField] = selectedCodeFinCivilUnc;
+        }
 
         // MECHANICAL Unconventional
-        if (hasPhysProgMechUnc && _physMechUncCtrl.text.trim().isNotEmpty)
-          newAttributes['intpprogressmunc'] = num.tryParse(_physMechUncCtrl.text.trim()) ?? _physMechUncCtrl.text.trim();
-        if (hasFinProgMechUnc && _finMechUncCtrl.text.trim().isNotEmpty)
-          newAttributes['intfprogressmunc'] = num.tryParse(_finMechUncCtrl.text.trim()) ?? _finMechUncCtrl.text.trim();
+        if (hasPhysProgMechUnc && selectedCodePhysMechUnc != null) {
+          newAttributes[physMechUncField] = selectedCodePhysMechUnc;
+        }
+        if (hasFinProgMechUnc && selectedCodeFinMechUnc != null) {
+          newAttributes[finMechUncField] = selectedCodeFinMechUnc;
+        }
       }
 
       final newFeature = widget.relatedFeatureTable.createFeature(
@@ -317,17 +381,40 @@ class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
 
   @override
   void dispose() {
-    _physCivilUncCtrl.dispose();
-    _finCivilUncCtrl.dispose();
-    _physMechUncCtrl.dispose();
-    _finMechUncCtrl.dispose();
-    _physCivilConCtrl.dispose();
-    _finCivilConCtrl.dispose();
-    _physMechConCtrl.dispose();
-    _finMechConCtrl.dispose();
     _remarkController.dispose();
     _officerNameController.dispose();
     super.dispose();
+  }
+
+  // Helper function to create a DropdownButtonFormField for subtype progress
+  Widget _buildSubtypeDropdown({
+    required String labelText,
+    required List<Map<String, dynamic>> codedValues,
+    required int? selectedValue,
+    required ValueChanged<int?> onChanged,
+  }) {
+    if (codedValues.isEmpty) return const SizedBox.shrink(); // Hide if no coded values available
+
+    return Column(
+      children: [
+        DropdownButtonFormField<int>(
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: labelText,
+            border: OutlineInputBorder(),
+          ),
+          value: selectedValue,
+          items: codedValues.map((cv) {
+            return DropdownMenuItem<int>(
+              value: cv['code'],
+              child: Text(cv['name']),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
   }
 
   @override
@@ -377,147 +464,128 @@ class _AddRelatedFeaturePageState extends State<AddRelatedFeaturePage> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Main Progress Dropdown (always show)
-                    DropdownButtonFormField<int>(
-                      isExpanded: true,
-                      decoration: InputDecoration(
-                        labelText: isConventional
-                            ? 'Conventional Progress'
-                            : isUnconventional
-                            ? 'Unconventional Progress'
-                            : 'Physical Progress',
-                        border: OutlineInputBorder(),
-                      ),
-                      value: selectedCode,
-                      items: codedValues.map((cv) {
-                        return DropdownMenuItem<int>(
-                          value: cv['code'],
-                          child: Text(cv['name']),
-                        );
-                      }).toList(),
-                      onChanged: (val) => setState(() => selectedCode = val),
-                      validator: (val) {
-                        if (val == null) {
-                          return 'Please select a progress status';
-                        }
-                        if (val! <= widget.maxPrevProgress) {
-                          return 'Progress must be higher than last recorded (${widget.maxPrevProgress})';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
+                    // // Main Physical Progress Dropdown (always show)
+                    // DropdownButtonFormField<int>(
+                    //   isExpanded: true,
+                    //   decoration: InputDecoration(
+                    //     labelText: 'Physical Progress',
+                    //     border: OutlineInputBorder(),
+                    //   ),
+                    //   value: selectedCodeP,
+                    //   items: codedValuesP.map((cv) {
+                    //     return DropdownMenuItem<int>(
+                    //       value: cv['code'],
+                    //       child: Text(cv['name']),
+                    //     );
+                    //   }).toList(),
+                    //   onChanged: (val) => setState(() => selectedCodeP = val),
+                    //   validator: (val) {
+                    //     if (val == null) {
+                    //       return 'Please select a progress status';
+                    //     }
+                    //     if (val! <= widget.maxPrevProgress) {
+                    //       return 'Progress must be higher than last recorded (${widget.maxPrevProgress})';
+                    //     }
+                    //     return null;
+                    //   },
+                    // ),
+                    // const SizedBox(height: 16),
+                    //
+                    // // Financial Progress Dropdown (if available)
+                    // if (intfProgressField != null) ...[
+                    //   DropdownButtonFormField<int>(
+                    //     isExpanded: true,
+                    //     decoration: const InputDecoration(
+                    //       labelText: 'Financial Progress',
+                    //       border: OutlineInputBorder(),
+                    //     ),
+                    //     value: selectedCodeF,
+                    //     items: codedValuesF.map((cv) {
+                    //       return DropdownMenuItem<int>(
+                    //         value: cv['code'],
+                    //         child: Text(cv['name']),
+                    //       );
+                    //     }).toList(),
+                    //     onChanged: (val) => setState(() => selectedCodeF = val),
+                    //   ),
+                    //   const SizedBox(height: 16),
+                    // ],
 
-                    // Financial Progress Dropdown (if available)
-                    if (intfProgressField != null) ...[
-                      DropdownButtonFormField<int>(
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Financial Progress',
-                          border: OutlineInputBorder(),
-                        ),
-                        value: selectedCodeF,
-                        items: codedValuesF.map((cv) {
-                          return DropdownMenuItem<int>(
-                            value: cv['code'],
-                            child: Text(cv['name']),
-                          );
-                        }).toList(),
-                        onChanged: (val) => setState(() => selectedCodeF = val),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+
+                    _buildSubtypeDropdown(
+                      labelText: 'Physical Progress',
+                      codedValues: codedValuesP,
+                      selectedValue: selectedCodeP,
+                      onChanged: (val) => setState(() => selectedCodeP = val),
+                    ),
+
+                    _buildSubtypeDropdown(
+                      labelText: 'Financial Progress',
+                      codedValues: codedValuesF,
+                      selectedValue: selectedCodeF,
+                      onChanged: (val) => setState(() => selectedCodeF = val),
+                    ),
 
                     // Conventional subtype fields
                     if (isConventional) ...[
                       // CIVIL FIELDS
-                      if (hasPhysProgCivilCon) ...[
-                        TextFormField(
-                          controller: _physCivilConCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Physical Progress Civil (Con)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      if (hasFinProgCivilCon) ...[
-                        TextFormField(
-                          controller: _finCivilConCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Financial Progress Civil (Con)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                      _buildSubtypeDropdown(
+                        labelText: 'Physical Progress Civil (Con)',
+                        codedValues: codedValuesPhysCivilCon,
+                        selectedValue: selectedCodePhysCivilCon,
+                        onChanged: (val) => setState(() => selectedCodePhysCivilCon = val),
+                      ),
+                      _buildSubtypeDropdown(
+                        labelText: 'Financial Progress Civil (Con)',
+                        codedValues: codedValuesFinCivilCon,
+                        selectedValue: selectedCodeFinCivilCon,
+                        onChanged: (val) => setState(() => selectedCodeFinCivilCon = val),
+                      ),
+
                       // MECHANICAL FIELDS
-                      if (hasPhysProgMechCon) ...[
-                        TextFormField(
-                          controller: _physMechConCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Physical Progress Mech (Con)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      if (hasFinProgMechCon) ...[
-                        TextFormField(
-                          controller: _finMechConCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Financial Progress Mech (Con)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                      _buildSubtypeDropdown(
+                        labelText: 'Physical Progress Mech (Con)',
+                        codedValues: codedValuesPhysMechCon,
+                        selectedValue: selectedCodePhysMechCon,
+                        onChanged: (val) => setState(() => selectedCodePhysMechCon = val),
+                      ),
+                      _buildSubtypeDropdown(
+                        labelText: 'Financial Progress Mech (Con)',
+                        codedValues: codedValuesFinMechCon,
+                        selectedValue: selectedCodeFinMechCon,
+                        onChanged: (val) => setState(() => selectedCodeFinMechCon = val),
+                      ),
                     ],
 
                     // Unconventional subtype fields
                     if (isUnconventional) ...[
                       // CIVIL FIELDS
-                      if (hasPhysProgCivilUnc) ...[
-                        TextFormField(
-                          controller: _physCivilUncCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Physical Progress Civil (Unc)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      if (hasFinProgCivilUnc) ...[
-                        TextFormField(
-                          controller: _finCivilUncCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Financial Progress Civil (Unc)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                      _buildSubtypeDropdown(
+                        labelText: 'Physical Progress Civil (Unc)',
+                        codedValues: codedValuesPhysCivilUnc,
+                        selectedValue: selectedCodePhysCivilUnc,
+                        onChanged: (val) => setState(() => selectedCodePhysCivilUnc = val),
+                      ),
+                      _buildSubtypeDropdown(
+                        labelText: 'Financial Progress Civil (Unc)',
+                        codedValues: codedValuesFinCivilUnc,
+                        selectedValue: selectedCodeFinCivilUnc,
+                        onChanged: (val) => setState(() => selectedCodeFinCivilUnc = val),
+                      ),
+
                       // MECHANICAL FIELDS
-                      if (hasPhysProgMechUnc) ...[
-                        TextFormField(
-                          controller: _physMechUncCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Physical Progress Mech (Unc)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      if (hasFinProgMechUnc) ...[
-                        TextFormField(
-                          controller: _finMechUncCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Financial Progress Mech (Unc)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                      _buildSubtypeDropdown(
+                        labelText: 'Physical Progress Mech (Unc)',
+                        codedValues: codedValuesPhysMechUnc,
+                        selectedValue: selectedCodePhysMechUnc,
+                        onChanged: (val) => setState(() => selectedCodePhysMechUnc = val),
+                      ),
+                      _buildSubtypeDropdown(
+                        labelText: 'Financial Progress Mech (Unc)',
+                        codedValues: codedValuesFinMechUnc,
+                        selectedValue: selectedCodeFinMechUnc,
+                        onChanged: (val) => setState(() => selectedCodeFinMechUnc = val),
+                      ),
                     ],
 
                     TextFormField(

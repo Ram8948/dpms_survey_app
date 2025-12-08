@@ -309,6 +309,11 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
     // );
   }
 
+  void debugPrintLong(String message, {int chunkSize = 800}) {
+    final pattern = RegExp('.{1,$chunkSize}', dotAll: true);
+    pattern.allMatches(message).forEach((match) => debugPrint(match.group(0)));
+  }
+
   Future<double> calculateDistanceBetweenPoints({
     required ArcGISPoint currentLocation,
     required ArcGISPoint tappedPoint,
@@ -345,8 +350,8 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
   }
 
   final hardcodedPoint = ArcGISPoint(
-    x: 73.46793643744329,
-    y: 18.9820617263371,
+    x: 73.46719623634341,
+    y: 18.973039199712662,
     spatialReference: SpatialReference.wgs84,
   );
   late SimulatedLocationDataSource _simulatedLocationDataSource;

@@ -46,7 +46,12 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   bool _relatedFeaturesLoading = false;
   ArcGISFeatureTable? _mainFeatureTable;
   bool showAttachmentError = false;
-  int initProgress = 0;
+  int intpprogress = -1;
+  int intfprogress = -1;
+  int intpprogressc = -1;
+  int intpprogressm = -1;
+  int intfprogressc = -1;
+  int intfprogressm = -1;
   bool isSaving = false;
 
   void debugPrintLong(String message, {int chunkSize = 800}) {
@@ -533,7 +538,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       }
       return null;
     }
-
+    debugPrint("_buildFieldCard field.name ${field.name}");
     final popupField = findPopupField(field.name, popupFields);
     final label = popupField?.label ?? field.alias;
 
@@ -642,8 +647,23 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                 shouldBeEditable
                     ? (String? newValue) {
                       debugPrint("field.name ${field.name}");
-                      if (field.name == "intpprogress") {
-                        initProgress = int.tryParse(newValue!) ?? 0;
+                      if (field.name == "intpProgress") {
+                        intpprogress = int.tryParse(newValue!) ?? 0;
+                      }
+                      else if (field.name == "intfProgress") {
+                        intfprogress = int.tryParse(newValue!) ?? 0;
+                      }
+                      else if (field.name == "intpprogressc") {
+                        intpprogressc = int.tryParse(newValue!) ?? 0;
+                      }
+                      else if (field.name == "intpprogressm") {
+                        intpprogressm = int.tryParse(newValue!) ?? 0;
+                      }
+                      else if (field.name == "intfprogressc") {
+                        intfprogressc = int.tryParse(newValue!) ?? 0;
+                      }
+                      else if (field.name == "intfprogressm") {
+                        intfprogressm = int.tryParse(newValue!) ?? 0;
                       }
                       setState(() {
                         _editedAttributes[field.name] = newValue;
@@ -947,11 +967,57 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
           debugPrint("intpProgressField $intpProgressField");
           Map<String, dynamic> newAttributes = {
             'GUID': widget.feature.attributes['globalid'], // link to parent
-            intpProgressField: initProgress,
             'surveyordate': defaultDate, // example physical progress code
-          'schemename': widget.feature.attributes["name"],
-          'schemeid': widget.feature.attributes["id"],
+            'schemename': widget.feature.attributes["name"],
+            'schemeid': widget.feature.attributes["id"],
           };
+
+          if (intpprogress!=-1) {
+            newAttributes['intpprogress'] = intpprogress;
+          }
+          if (intfprogress!=-1) {
+            newAttributes['intfprogress'] = intfprogress;
+          }
+
+          if (widget.feature.attributes["subtype"]==1) {
+            // CIVIL Conventional
+            if (intpprogressc!=-1) {
+              newAttributes['intpprogresscon'] = intpprogressc;
+            }
+            if (intfprogressc!=-1) {
+              newAttributes['intfprogresscon'] = intfprogressc;
+            }
+
+            // MECHANICAL Conventional
+            if (intpprogressm!=-1) {
+              newAttributes['intpprogressmcon'] = intpprogressm;
+            }
+            if (intfprogressm!=-1) {
+              newAttributes['intfprogressmcon'] = intfprogressm;
+            }
+          } else if (widget.feature.attributes["subtype"]==2) {
+
+            // CIVIL Unconventional
+            if (intpprogressc!=-1) {
+              newAttributes['intpprogresscunc'] = intpprogressc;
+            }
+            if (intfprogressc!=-1) {
+              newAttributes['intfprogresscunc'] = intfprogressc;
+            }
+
+            // MECHANICAL Unconventional
+            if (intpprogressm!=-1) {
+              newAttributes['intpprogressmunc'] = intpprogressm;
+            }
+            if (intfprogressm!=-1) {
+              newAttributes['intfprogressmunc'] = intfprogressm;
+            }
+          }
+          else
+          {
+
+          }
+
           final newFeature =
           arcGISFeatureTable.createFeature(attributes: newAttributes)
           as ArcGISFeature;

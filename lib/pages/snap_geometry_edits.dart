@@ -713,6 +713,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
           Feature? interceptedFeature = await checkFeatureInterceptWTP(
             feature.geometry,
           );
+          debugPrint("createFeature interceptedFeature: ${interceptedFeature?.geometry}");
           if (interceptedFeature != null) {
 
             final selectedSubtype = await showDialog<int>(
@@ -1352,6 +1353,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
     ArcGISMap map,
   ) async {
     final geometry = feature.geometry;
+    debugPrint("findIntersectingLayers geometry $geometry");
     if (geometry == null) return [];
 
     final List<String> layerNames = [];
@@ -1386,7 +1388,10 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
         wtpFeature,
         _map,
       );
-
+      debugPrint("wtpLayerNames wtpFeature ${wtpFeature.attributes}");
+      debugPrint("wtpLayerNames wtpFeature ${wtpFeature.attributes}");
+      debugPrint("wtpLayerNames interceptedLayerName $interceptedLayerName");
+      debugPrint("wtpLayerNames $wtpLayerNames");
       // ——— FEATURE DEPENDENCY CHECK (Sequence) ———
       // Find index of new layer name, if > 0, its dependency is previous one in the list
       debugPrint("wtpLayerNames $wtpLayerNames");
@@ -1439,7 +1444,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
   Future<Feature?> checkFeatureInterceptWTP(Geometry? featureGeometry) async {
     debugPrint("LayerPresent ${_selectedLayer!.name}");
 
-    debugPrint("checkFeatureInterceptWTP ");
+    debugPrint("checkFeatureInterceptWTP featureGeometry $featureGeometry");
     final wtpLayer = _map.operationalLayers
         .whereType<FeatureLayer>()
         .firstWhere(
@@ -1452,7 +1457,7 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
         QueryParameters()
           ..geometry = featureGeometry
           ..spatialRelationship = SpatialRelationship.intersects
-          ..returnGeometry = false;
+          ..returnGeometry = true;
     debugPrint("checkFeatureInterceptWTP queryParams $queryParams");
     // Use the featureTable from the layer, cast as ServiceFeatureTable
     ArcGISFeatureTable? featureTable;
@@ -1481,11 +1486,16 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
 
     // Get the features from the query result
     final features = queryResult?.features();
-    debugPrint(
+    debugPrintLong(
       "checkFeatureInterceptWTP features.isNotEmpty ${features?.isNotEmpty}",
     );
+    debugPrintLong("checkFeatureInterceptWTP firstFeature features?.length ${features?.length}");
     if (features != null && features.isNotEmpty) {
       final firstFeature = features.first;
+      debugPrintLong("checkFeatureInterceptWTP firstFeature $firstFeature");
+      debugPrintLong("checkFeatureInterceptWTP firstFeature.geometry ${firstFeature.geometry}");
+      debugPrintLong("checkFeatureInterceptWTP firstFeature.attributes ${firstFeature.attributes}");
+      debugPrintLong("checkFeatureInterceptWTP firstFeature.featureTable?.tableName ${firstFeature.featureTable?.tableName}");
       return firstFeature;
     } else {
       return null;

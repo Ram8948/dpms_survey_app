@@ -209,18 +209,41 @@ class RelatedFeaturesTable extends StatelessWidget {
 
     // Names as they come in attributes / field.name
     const visibleFieldNames = [
-      'Surveyor Date',
-      'Physical Progress',
-      'Financial Progress',
-      'Scheme Name',
-      'Scheme Id',
+      'surveyordate',
+      'intpprogress',
+      'intfprogress',
+      'schemename',
+      'schemeid',
+      'intpprogressc',
+      'intfprogressc',
+      'intpprogresscconv',
+      'intpprogressmconv',
+      'intpprogresscunconv',
+      'intpprogressmunconv',
+      'intfprogressccon',
+      'intfprogressmcon',
+      'intpprogressccon',
+      'intpprogressmcon',
+      'intfprogresscunc',
+      'intfprogressmunc',
     ];
 
+    /// Example of iterating through a list of 'Field' objects
+    for (var field in fields) {
+      // The 'name' is often the database column/programmatic identifier (e.g., "customer_id")
+      final fieldName = field.name;
+
+      // The 'alias' is the user-friendly label (e.g., "Customer ID")
+      final aliasName = field.alias;
+
+      debugPrint('Field: **$fieldName** | Alias: **$aliasName**');
+    }
+
     final visibleFields = fields
-        .where((f) => visibleFieldNames.contains(f.alias))
+        .where((f) => visibleFieldNames.contains(f.name))
         .toList();
     // Sort visibleFields based on the order of aliases in visibleFieldNames
-    visibleFields.sort((a, b) => visibleFieldNames.indexOf(a.alias).compareTo(visibleFieldNames.indexOf(b.alias)));
+    visibleFields.sort((a, b) => visibleFieldNames.indexOf(a.name).compareTo(visibleFieldNames.indexOf(b.name)));
     debugPrint("visibleFields $visibleFields");
     for (var field in visibleFields) {
       debugPrint('Field alias: ${field.alias}, Field name: ${field.name}');
@@ -243,10 +266,11 @@ class RelatedFeaturesTable extends StatelessWidget {
               child: DataTable(
                 columns: visibleFields.map(
                         (field) => DataColumn(
-                      label: SizedBox(
-                        width: 150, // Fixed width for the column header
-                        child: Text(field.alias ?? field.name),
-                      ),
+                      // label: SizedBox(
+                      //   width: 150, // Fixed width for the column header
+                      //   child: Text(field.alias ?? field.name),
+                      // ),
+                          label:  Text(field.alias ?? field.name),
                     ),
                   ).toList(),
                 rows: relatedFeatures.map((feature) {
@@ -279,11 +303,11 @@ class RelatedFeaturesTable extends StatelessWidget {
                         }
 
                         return DataCell(
-                          // Text(value?.toString() ?? ''),
-                          SizedBox(
-                            width:150,  // Match width to header for alignment
-                            child: Text(displayValue ?? ''),
-                          ),
+                          Text(displayValue ?? ''),
+                          // SizedBox(
+                          //   width:150,  // Match width to header for alignment
+                          //   child: Text(displayValue ?? ''),
+                          // ),
                         );
                       }).toList(),
 
