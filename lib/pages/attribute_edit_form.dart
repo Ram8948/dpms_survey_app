@@ -52,6 +52,12 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   int intpprogressm = -1;
   int intfprogressc = -1;
   int intfprogressm = -1;
+
+  int intfprogressmcon = -1;
+  int intpprogressmcon = -1;
+  int intfprogresscunc = -1;
+  int intfprogressmunc = -1;
+
   bool isSaving = false;
 
   void debugPrintLong(String message, {int chunkSize = 800}) {
@@ -1013,10 +1019,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
               newAttributes['intfprogressmunc'] = intfprogressm;
             }
           }
-          else
-          {
-
-          }
 
           final newFeature =
           arcGISFeatureTable.createFeature(attributes: newAttributes)
@@ -1064,6 +1066,10 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
         });
       }
     }
+  }
+
+  bool hasField(String name) {
+    return relatedTables!.first.fields.any((f) => f.name.toLowerCase() == name.toLowerCase());
   }
 
   Future<void> _applyEdits(ArcGISFeature selectedFeature) async {
