@@ -1,8 +1,7 @@
 import 'package:dpmssurveyapp/pages/login_and_home_manager.dart';
-import 'package:dpmssurveyapp/pages/authenticate_with_o_auth_offline.dart';
-import 'package:dpmssurveyapp/pages/authenticate_and_export_offline.dart';
 import 'package:flutter/material.dart';
 import 'package:arcgis_maps/arcgis_maps.dart';
+import 'dart:io';
 
 void main() {
   const apiKey = 'AAPK02c8ef93a9984180bbebab60498ccd5eFkjYiIVXsIc4VFPBm0Bu82nzFI6eIJDNHBBiRUlRmuyNxfvjf_MKL30fVpuRcmlA';
@@ -11,6 +10,7 @@ void main() {
   } else {
     ArcGISEnvironment.apiKey = apiKey;
   }
+  HttpOverrides.global = MyHttpOverrides();
   runApp(const MyApp());
 }
 
@@ -202,7 +202,13 @@ final ThemeData appTheme = ThemeData(
 );
 
 
-
+class MyHttpOverrides extends HttpOverrides{
+  @override
+  HttpClient createHttpClient(SecurityContext? context){
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (X509Certificate cert, String host, int port)=> true;
+  }
+}
 
 
 

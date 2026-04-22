@@ -38,7 +38,7 @@ class _LoginAndHomeManagerState extends State<LoginAndHomeManager> {
       );
       // Create PregeneratedTokenCredential with portal URI and tokenInfo
       final credential = PregeneratedTokenCredential(
-        uri: Uri.parse('https://gis.mjpdpms.in/agportal/'),
+        uri: Uri.parse('https://dpmsportal.ceinsys.com/portal/'),
         tokenInfo: tokenInfo!,
         referer: "", // or your app referer string if required
       );
@@ -46,7 +46,7 @@ class _LoginAndHomeManagerState extends State<LoginAndHomeManager> {
       // Add credential to ArcGISEnvironment credential store
       ArcGISEnvironment.authenticationManager.arcGISCredentialStore.addForUri(
         credential: credential,
-        uri: Uri.parse('https://gis.mjpdpms.in/agportal/'),
+        uri: Uri.parse('https://dpmsportal.ceinsys.com/portal/'),
       );
       print('Access token restored in ArcGIS environment');
       _isAuthenticated = true;

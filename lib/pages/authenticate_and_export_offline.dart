@@ -15,7 +15,7 @@ class _AuthenticateAndExportOfflineState extends State<AuthenticateAndExportOffl
 
   // OAuth configuration - update with your portal/clientId/redirectUri
   final _oauthUserConfiguration = OAuthUserConfiguration(
-    portalUri: Uri.parse('https://gis.mjpdpms.in/agportal/'), // Your portal URL
+    portalUri: Uri.parse('https://dpmsportal.ceinsys.com/portal/'), // Your portal URL
     clientId: 'ozfJbEjPm5MbOsNq',                            // Your client ID
     redirectUri: Uri.parse('my-ags-flutter-app://auth'),     // Your app redirect scheme
   );
@@ -142,7 +142,7 @@ class _AuthenticateAndExportOfflineState extends State<AuthenticateAndExportOffl
   Future<void> onMapViewReady() async {
     // Load a secure web map item using the authenticated portal
     final portal = Portal(
-      Uri.parse('https://gis.mjpdpms.in/agportal/'),
+      Uri.parse('https://dpmsportal.ceinsys.com/portal/'),
       connection: PortalConnection.authenticated,
     );
     await portal.load();

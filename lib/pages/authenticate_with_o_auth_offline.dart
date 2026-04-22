@@ -15,7 +15,7 @@ class _AuthenticateWithOAuthOfflineState extends State<AuthenticateWithOAuthOffl
   final _mapViewController = ArcGISMapView.createController();
 
   final _oauthUserConfiguration = OAuthUserConfiguration(
-    portalUri: Uri.parse('https://gis.mjpdpms.in/agportal/'),      // Use your portal if needed
+    portalUri: Uri.parse('https://dpmsportal.ceinsys.com/portal/'),      // Use your portal if needed
     clientId: 'ozfJbEjPm5MbOsNq',                        // Your registered clientId
     redirectUri: Uri.parse('my-ags-flutter-app://auth'), // Your scheme
   );
@@ -185,7 +185,7 @@ class _AuthenticateWithOAuthOfflineState extends State<AuthenticateWithOAuthOffl
     // );
     // await portalItem.load();
     final portal = Portal(
-      Uri.parse('https://gis.mjpdpms.in/agportal/'),
+      Uri.parse('https://dpmsportal.ceinsys.com/portal/'),
       connection: PortalConnection.authenticated,
     );
     await portal.load();

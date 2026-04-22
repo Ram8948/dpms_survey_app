@@ -41,13 +41,13 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loginInProgress = true);
     try {
       final credential = await TokenCredential.create(
-        uri: Uri.parse('https://gis.mjpdpms.in/agportal/'),
+        uri: Uri.parse('https://dpmsportal.ceinsys.com/portal/'),
         username: _usernameController.text.trim(),
         password: _passwordController.text,
       );
       ArcGISEnvironment.authenticationManager.arcGISCredentialStore.addForUri(
         credential: credential,
-        uri: Uri.parse('https://gis.mjpdpms.in/agportal/'),
+        uri: Uri.parse('https://dpmsportal.ceinsys.com/portal/'),
       );
 
       final prefs = await SharedPreferences.getInstance();
