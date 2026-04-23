@@ -343,10 +343,10 @@ mixin SampleStateSupport<T extends StatefulWidget> on State<T> {
       return 0;
     }
   }
-
+  final distanceWithin = 1000;
   final hardcodedPoint = ArcGISPoint(
-    x: 76.379260,
-    y: 19.129784,
+    x: 76.38878535043176,
+    y: 19.1270084472033,
     spatialReference: SpatialReference.wgs84,
   );
   late SimulatedLocationDataSource _simulatedLocationDataSource;

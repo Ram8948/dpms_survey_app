@@ -621,9 +621,9 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
     ArcGISPoint? currentLocation = _mapViewController.locationDisplay.mapLocation;
     if (mapPoint != null && currentLocation != null) {
       double distance = await calculateDistanceBetweenPoints(currentLocation: currentLocation, tappedPoint: mapPoint);
-      if(distance>20)
+      if(distance>distanceWithin)
       {
-        showMessageDialog("You are not within the range of 20 Meter");
+        showMessageDialog("You are not within the range of $distanceWithin Meter");
         return;
       }
     }

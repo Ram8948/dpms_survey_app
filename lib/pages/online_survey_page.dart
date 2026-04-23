@@ -739,9 +739,9 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
       ArcGISPoint? currentLocation = _mapViewController.locationDisplay.mapLocation;
       if (mapPoint != null && currentLocation != null) {
         double distance = await calculateDistanceBetweenPoints(currentLocation: currentLocation, tappedPoint: mapPoint);
-        if(distance>20)
+        if(distance>distanceWithin)
         {
-          showMessageDialog("You are not within the range of 20 Meter");
+          showMessageDialog("You are not within the range of $distanceWithin Meter");
           return;
         }
         // {
@@ -764,7 +764,7 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
         if (result.geoElements.isNotEmpty &&
             result.layerContent is FeatureLayer) {
           final featureLayer = result.layerContent as FeatureLayer;
-          final feature = result.geoElements.first as ArcGISFeature;
+          final feature = result.geoElements.last as ArcGISFeature;
           _selectedFeatureLayer = featureLayer;
           featureLayer.selectFeatures([feature]);
 
