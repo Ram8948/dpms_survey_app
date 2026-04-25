@@ -72,6 +72,7 @@ class _LoginPageState extends State<LoginPage> {
       widget.onLoginSuccess();
     } catch (e) {
       if (mounted) {
+        debugPrint('Login failed: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Login failed: $e')),
         );

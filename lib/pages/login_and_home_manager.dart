@@ -19,47 +19,52 @@ class _LoginAndHomeManagerState extends State<LoginAndHomeManager> {
   }
 
   Future<void> _checkLoginStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final loggedIn = prefs.getBool('isLoggedIn') ?? false;
-    final expirationString = prefs.getString('tokenExpiration');
-    final expiration = expirationString != null ? DateTime.tryParse(expirationString) : null;
-    final accessToken = prefs.getString('accessToken');
-    debugPrint("expirationString $expirationString accessToken $accessToken");
-    if (expiration != null && DateTime.now().isAfter(expiration)) {
-      print('Token has expired');
-      _isAuthenticated = false;
-      // Handle re-authentication
-    } else if (expiration != null && accessToken!=null){
+    try {
+      debugPrint("Checking login status...");
+      final prefs = await SharedPreferences.getInstance();
+      final loggedIn = prefs.getBool('isLoggedIn') ?? false;
+      final expirationString = prefs.getString('tokenExpiration');
+      final expiration = expirationString != null ? DateTime.tryParse(expirationString) : null;
+      final accessToken = prefs.getString('accessToken');
+      debugPrint("loggedIn: $loggedIn, expiration: $expiration, hasToken: ${accessToken != null}");
 
-      final tokenInfo = TokenInfo.create(
-        accessToken: accessToken,
-        expirationDate: expiration,
-        isSslRequired: true, // Adjust based on your token generation
-      );
-      // Create PregeneratedTokenCredential with portal URI and tokenInfo
-      final credential = PregeneratedTokenCredential(
-        uri: Uri.parse('https://dpmsportal.ceinsys.com/portal/'),
-        tokenInfo: tokenInfo!,
-        referer: "", // or your app referer string if required
-      );
-
-      // Add credential to ArcGISEnvironment credential store
-      ArcGISEnvironment.authenticationManager.arcGISCredentialStore.addForUri(
-        credential: credential,
-        uri: Uri.parse('https://dpmsportal.ceinsys.com/portal/'),
-      );
-      print('Access token restored in ArcGIS environment');
-      _isAuthenticated = true;
-      print('Token is valid');
-      // Continue with authenticated session
-    }
-    else
-    {
+      if (expiration != null && DateTime.now().isAfter(expiration)) {
+        debugPrint('Token has expired');
         _isAuthenticated = false;
-    }
-    setState(() {
+      } else if (expiration != null && accessToken != null) {
+        final tokenInfo = TokenInfo.create(
+          accessToken: accessToken,
+          expirationDate: expiration,
+          isSslRequired: true,
+        );
 
-    });
+        if (tokenInfo != null) {
+          ArcGISEnvironment.authenticationManager.arcGISCredentialStore.addForUri(
+            credential: PregeneratedTokenCredential(
+              uri: Uri.parse('https://dpmsportal.ceinsys.com/portal/'),
+              tokenInfo: tokenInfo,
+              referer: "",
+            ),
+            uri: Uri.parse('https://dpmsportal.ceinsys.com/portal/'),
+          );
+          debugPrint('Access token restored in ArcGIS environment');
+          _isAuthenticated = true;
+        } else {
+          debugPrint('Failed to create tokenInfo');
+          _isAuthenticated = false;
+        }
+      } else {
+        _isAuthenticated = false;
+      }
+    } catch (e, stack) {
+      debugPrint("Error in _checkLoginStatus: $e");
+      debugPrint(stack.toString());
+      _isAuthenticated = false;
+    } finally {
+      if (mounted) {
+        setState(() {});
+      }
+    }
   }
 
   void _onLoginSuccess() {

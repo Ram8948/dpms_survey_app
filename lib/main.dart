@@ -1,17 +1,34 @@
+import 'dart:io';
+
 import 'package:dpmssurveyapp/pages/login_and_home_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:arcgis_maps/arcgis_maps.dart';
 import 'dart:io';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  debugPrint("App starting...");
   const apiKey = 'AAPK02c8ef93a9984180bbebab60498ccd5eFkjYiIVXsIc4VFPBm0Bu82nzFI6eIJDNHBBiRUlRmuyNxfvjf_MKL30fVpuRcmlA';
-  if (apiKey.isEmpty) {
-    throw Exception('API key undefined');
-  } else {
-    ArcGISEnvironment.apiKey = apiKey;
+  try {
+    if (apiKey.isEmpty) {
+      debugPrint('API key undefined');
+    } else {
+      ArcGISEnvironment.apiKey = apiKey;
+      debugPrint("ArcGIS API Key set");
+    }
+  } catch (e) {
+    debugPrint("Error initializing ArcGIS: $e");
   }
   HttpOverrides.global = MyHttpOverrides();
   runApp(const MyApp());
+}
+
+class MyHttpOverrides extends HttpOverrides{
+  @override
+  HttpClient createHttpClient(SecurityContext? context){
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (X509Certificate cert, String host, int port)=> true;
+  }
 }
 
 class MyApp extends StatelessWidget {

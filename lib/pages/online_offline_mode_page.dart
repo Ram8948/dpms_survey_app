@@ -15,7 +15,8 @@ class OnlineOfflineModePage extends StatefulWidget {
 }
 
 class _OnlineOfflineModePageState extends State<OnlineOfflineModePage> {
-  // final Uri _portalUri = Uri.parse('https://gis.mjpdpms.in/agportal/');
+  // final Uri _portalUri = Uri.parse('https://dpmsportal.ceinsys.com/portal/');
+  final Uri _portalUri = Uri.parse('https://dpmsportal.ceinsys.com/portal/');
   // final String _webMapItemId = '920addf59d734bdca9146ae20315fb5b';
   // final String _webMapItemId = '23ee738f611f430fbadc1ebafc59f4e3';
   // final String _webMapItemId = 'bbae968f056040fba787effd38a8aa62';
@@ -26,7 +27,7 @@ class _OnlineOfflineModePageState extends State<OnlineOfflineModePage> {
   // final String _webMapItemId = '5627b093bf5d49318254890f4e08d481';
   // final String _webMapItemId = 'f96835ba2c3645bfbdb02ef03f7506a2';
   // final String _webMapItemId = 'af5d8e822b094eb49541cec3d6b2e51d';
-  final Uri _portalUri = Uri.parse('https://dpmsportal.ceinsys.com/portal/');
+  // final String _webMapItemId = '0c18e0a1bed84481acec5e9695840419';
   final String _webMapItemId = 'f4a397f4838c40a79e8263f77096d395';
 
   @override

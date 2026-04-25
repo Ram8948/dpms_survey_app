@@ -181,7 +181,18 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
   }
 
   Future<void> _showSearchDialog() async {
-    final layers = _map!.operationalLayers.whereType<FeatureLayer>().toList();
+    final List<FeatureLayer> layers = [];
+    void findFeatureLayers(layerCollection) {
+      for (final layer in layerCollection) {
+        if (layer is FeatureLayer) {
+          layers.add(layer);
+        } else if (layer is GroupLayer) {
+          findFeatureLayers(layer.layers);
+        }
+      }
+    }
+    findFeatureLayers(_map.operationalLayers);
+
     String? selectedLayerName = layers.isNotEmpty ? layers[0].name : null;
     final TextEditingController idController = TextEditingController();
     String searchType = 'Scheme ID'; // or 'Object ID'
@@ -451,40 +462,52 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
 
     // Ensure the map and each layer loads in order to synchronize snap settings.
     debugPrint('before loading await _map.load()');
-    await _map.load();
-    await Future.wait(_map.operationalLayers.map((layer) => layer.load()));
+    try {
+      await _map.load();
+      debugPrint('Map loaded successfully');
+    } catch (e) {
+      debugPrint('Error loading map: $e');
+      showMessageDialog('Error loading map: $e');
+    }
+
+    for (final layer in _map.operationalLayers) {
+      try {
+        await layer.load();
+      } catch (e) {
+        debugPrint('Error loading layer ${layer.name}: $e');
+      }
+    }
 
     // Sync snap settings.
     synchronizeSnapSettings();
 
     // Configure menu items for selecting tools and geometry types.
+    _toolMenuItems.clear();
     _toolMenuItems.addAll(configureToolMenuItems());
-    // _geometryTypeMenuItems.addAll(configureGeometryTypeMenuItems());
+
     // Build the FeatureLayer dropdown menu
-    debugPrint('_map.operationalLayers ${_map.operationalLayers}');
+    debugPrint('_map.operationalLayers length: ${_map.operationalLayers.length}');
     _layerMenuItems.clear();
-    // for (var layer in _map.operationalLayers.whereType<FeatureLayer>()) {
-    //   _layerMenuItems.add(DropdownMenuItem(
-    //     value: layer,
-    //     child: Text(layer.name),
-    //   ));
-    // }
-    for (var layer in _map.operationalLayers) {
-      if (layer is GroupLayer) {
-        // iterate through all sublayers inside GroupLayer
-        for (var subLayer in layer.layers) {
-          if (subLayer is FeatureLayer) {
-            _layerMenuItems.add(
-              DropdownMenuItem(value: subLayer, child: Text(subLayer.name)),
-            );
-          }
+
+    void addFeatureLayers(layers) {
+      for (var layer in layers) {
+        if (layer is GroupLayer) {
+          addFeatureLayers(layer.layers);
+        } else if (layer is FeatureLayer) {
+          debugPrint('Adding FeatureLayer to menu: ${layer.name}');
+          _layerMenuItems.add(
+            DropdownMenuItem(value: layer, child: Text(layer.name)),
+          );
         }
-      } else if (layer is FeatureLayer) {
-        _layerMenuItems.add(
-          DropdownMenuItem(value: layer, child: Text(layer.name)),
-        );
       }
     }
+
+    addFeatureLayers(_map.operationalLayers);
+
+    if (_layerMenuItems.isEmpty) {
+      debugPrint('Warning: No FeatureLayers found in the map');
+    }
+
     _layerMenuItems.sort((a, b) {
       final aName = (a.child as Text).data ?? '';
       final bName = (b.child as Text).data ?? '';
@@ -544,6 +567,10 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
   }
 
   Future<void> onTap(Offset localPosition) async {
+    if (_selectedLayer == null) {
+      debugPrint("onTap: No layer selected");
+      return;
+    }
     // Perform an identify operation on the graphics overlay at the tapped location.
     debugPrint("onTap ${_selectedLayer!.name}");
 
@@ -628,10 +655,10 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
     ArcGISPoint? currentLocation = _mapViewController.locationDisplay.mapLocation;
     if (mapPoint != null && currentLocation != null) {
       double distance = await calculateDistanceBetweenPoints(currentLocation: currentLocation, tappedPoint: mapPoint);
-      if(distance>1000)
+      if(distance>distanceWithin)
       {
-        // showMessageDialog("You are not within the range of 20 Meter");
-        showMessageDialog("You are not within the range of 1Km");
+        showMessageDialog("You are not within the range of $distanceWithin Meter");
+        // showMessageDialog("You are not within the range of 1Km");
         return;
       }
     }

@@ -959,10 +959,10 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
       ArcGISPoint? currentLocation = _mapViewController.locationDisplay.mapLocation;
       if (mapPoint != null && currentLocation != null) {
         double distance = await calculateDistanceBetweenPoints(currentLocation: currentLocation, tappedPoint: mapPoint);
-        if(distance>1000)
+        if(distance>distanceWithin)
         {
-          // showMessageDialog("You are not within the range of 20 Meter");
-          showMessageDialog("You are not within the range of 1Km");
+          showMessageDialog("You are not within the range of $distanceWithin Meter");
+          // showMessageDialog("You are not within the range of 1Km");
           return;
         }
         // {
