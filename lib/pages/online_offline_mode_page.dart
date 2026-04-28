@@ -28,7 +28,7 @@ class _OnlineOfflineModePageState extends State<OnlineOfflineModePage> {
   // final String _webMapItemId = 'f96835ba2c3645bfbdb02ef03f7506a2';
   // final String _webMapItemId = 'af5d8e822b094eb49541cec3d6b2e51d';
   // final String _webMapItemId = '0c18e0a1bed84481acec5e9695840419';
-  final String _webMapItemId = 'f4a397f4838c40a79e8263f77096d395';
+  final String _webMapItemId = 'f57b329fc91947b0a669d4a5d1b6b91f';
 
   @override
   Widget build(BuildContext context) {

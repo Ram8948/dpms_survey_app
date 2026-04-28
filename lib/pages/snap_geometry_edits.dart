@@ -377,7 +377,10 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
     // Snapping is used to maintain data integrity between different sources of data when editing,
     // so full resolution is needed for valid snapping.
     if (!widget.isOffline) {
-      final portal = Portal(widget.portalUri);
+      final portal = Portal(
+        widget.portalUri,
+        connection: PortalConnection.authenticated,
+      );
       await portal.load();
 
       // final licenseInfo = await portal.fetchLicenseInfo();
@@ -470,13 +473,20 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
       showMessageDialog('Error loading map: $e');
     }
 
-    for (final layer in _map.operationalLayers) {
-      try {
-        await layer.load();
-      } catch (e) {
-        debugPrint('Error loading layer ${layer.name}: $e');
+    Future<void> loadLayersRecursively(layers) async {
+      for (final layer in layers) {
+        try {
+          await layer.load();
+          if (layer is GroupLayer) {
+            await loadLayersRecursively(layer.layers);
+          }
+        } catch (e) {
+          debugPrint('Error loading layer ${layer.name}: $e');
+        }
       }
     }
+
+    await loadLayersRecursively(_map.operationalLayers);
 
     // Sync snap settings.
     synchronizeSnapSettings();
@@ -907,6 +917,37 @@ class _SnapGeometryEditsState extends State<SnapGeometryEdits>
   // }
 
   Widget buildBottomMenu() {
+    if (!_ready) {
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Container(
+          height: 60,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8F7FF),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFF8DCAFF)),
+          ),
+          child: const Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Loading Layers...',
+                  style: TextStyle(color: Color(0xFF0A4F87), fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
