@@ -1,5 +1,6 @@
 import 'package:arcgis_maps/arcgis_maps.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../widget/custom_floating_appbar.dart';
 import 'add_related_feature_page_new.dart';
@@ -40,42 +41,39 @@ class _RelatedFeaturesPageState extends State<RelatedFeaturesPage> {
     });
   }
 
-  Future<List<ArcGISFeature>> _queryRelatedFeatures(ArcGISFeature feature,ArcGISFeatureTable mainFeatureTable) async {
+  Future<List<ArcGISFeature>> _queryRelatedFeatures(ArcGISFeature feature, ArcGISFeatureTable mainFeatureTable) async {
     List<ArcGISFeature> allRelatedFeatures = [];
     try {
-      // Get the RelationshipInfo for the query
-      // This assumes the relationship is defined in the ServiceFeatureTable metadata
+      final relationshipInfoList = (mainFeatureTable is GeodatabaseFeatureTable)
+          ? mainFeatureTable.layerInfo?.relationshipInfos
+          : (mainFeatureTable is ServiceFeatureTable)
+              ? mainFeatureTable.layerInfo?.relationshipInfos
+              : null;
 
-      // Perform the query using your code snippet:
-      final relatedResults;
-      if(mainFeatureTable is GeodatabaseFeatureTable)
-      {
-        final relationshipInfoList = (mainFeatureTable as GeodatabaseFeatureTable).layerInfo?.relationshipInfos;
-        final relationshipInfo = relationshipInfoList?.firstWhere(
-              (info) => info.keyField == "GlobalID",
-          orElse: () => throw Exception('Relationship ID ${feature.attributes['globalid']} not found in layer info.'),
-        );
-
-        relatedResults = await (mainFeatureTable as GeodatabaseFeatureTable)
-            .queryRelatedFeatures(
-          feature: feature,
-          parameters: RelatedQueryParameters.withRelationshipInfo(relationshipInfo!),
-        );
+      if (relationshipInfoList == null || relationshipInfoList.isEmpty) {
+        debugPrint("No relationship infos found.");
+        return [];
       }
-      else
-      {
-        final relationshipInfoList = (mainFeatureTable as ServiceFeatureTable).layerInfo?.relationshipInfos;
-        final relationshipInfo = relationshipInfoList?.firstWhere(
-              (info) => info.keyField == "GlobalID",
-          orElse: () => throw Exception('Relationship ID ${feature.attributes['globalid']} not found in layer info.'),
-        );
 
-        relatedResults = await (mainFeatureTable as ServiceFeatureTable)
-            .queryRelatedFeaturesWithFieldOptions(
+      final relationshipInfo = relationshipInfoList.firstWhere(
+        (info) => info.keyField.toLowerCase() == "globalid",
+        orElse: () => relationshipInfoList.first,
+      );
+
+      final relatedResults;
+      if (mainFeatureTable is GeodatabaseFeatureTable) {
+        relatedResults = await mainFeatureTable.queryRelatedFeatures(
+          feature: feature,
+          parameters: RelatedQueryParameters.withRelationshipInfo(relationshipInfo),
+        );
+      } else if (mainFeatureTable is ServiceFeatureTable) {
+        relatedResults = await mainFeatureTable.queryRelatedFeaturesWithFieldOptions(
           feature: feature,
           queryFeatureFields: QueryFeatureFields.loadAll,
-          parameters: RelatedQueryParameters.withRelationshipInfo(relationshipInfo!),
+          parameters: RelatedQueryParameters.withRelationshipInfo(relationshipInfo),
         );
+      } else {
+        return [];
       }
 
       // // 3. Process the results
@@ -170,7 +168,7 @@ class _RelatedFeaturesPageState extends State<RelatedFeaturesPage> {
   }
 }
 
-class RelatedFeaturesTable extends StatelessWidget {
+class RelatedFeaturesTable extends StatefulWidget {
   final List<Feature> relatedFeatures;
   final ArcGISFeatureTable relatedFeatureTable;
   final VoidCallback refreshParent;
@@ -187,8 +185,21 @@ class RelatedFeaturesTable extends StatelessWidget {
   });
 
   @override
+  State<RelatedFeaturesTable> createState() => _RelatedFeaturesTableState();
+}
+
+class _RelatedFeaturesTableState extends State<RelatedFeaturesTable> {
+  final ScrollController _horizontalController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (relatedFeatures.isEmpty) {
+    if (widget.relatedFeatures.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -197,7 +208,7 @@ class RelatedFeaturesTable extends StatelessWidget {
             const Text('No related features found.'),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: onAddFeaturePressed,
+              onPressed: widget.onAddFeaturePressed,
               child: const Text('Add Related Feature'),
             ),
           ],
@@ -205,7 +216,7 @@ class RelatedFeaturesTable extends StatelessWidget {
       );
     }
 
-    final fields = relatedFeatureTable.fields;
+    final fields = widget.relatedFeatureTable.fields;
 
     // Names as they come in attributes / field.name
     const visibleFieldNames = [
@@ -228,112 +239,78 @@ class RelatedFeaturesTable extends StatelessWidget {
       'intfprogressmunc',
     ];
 
-    /// Example of iterating through a list of 'Field' objects
-    for (var field in fields) {
-      // The 'name' is often the database column/programmatic identifier (e.g., "customer_id")
-      final fieldName = field.name;
-
-      // The 'alias' is the user-friendly label (e.g., "Customer ID")
-      final aliasName = field.alias;
-
-      debugPrint('Field: **$fieldName** | Alias: **$aliasName**');
-    }
-
     final visibleFields = fields
-        .where((f) => visibleFieldNames.contains(f.name))
+        .where((f) => visibleFieldNames.contains(f.name.toLowerCase()))
         .toList();
-    // Sort visibleFields based on the order of aliases in visibleFieldNames
-    visibleFields.sort((a, b) => visibleFieldNames.indexOf(a.name).compareTo(visibleFieldNames.indexOf(b.name)));
-    debugPrint("visibleFields $visibleFields");
-    for (var field in visibleFields) {
-      debugPrint('Field alias: ${field.alias}, Field name: ${field.name}');
-      debugPrint('field.domain: ${field.domain}');
-    }
+    // Sort visibleFields based on the order of names in visibleFieldNames
+    visibleFields.sort((a, b) => visibleFieldNames.indexOf(a.name.toLowerCase()).compareTo(visibleFieldNames.indexOf(b.name.toLowerCase())));
 
     return Column(
       children: [
         Expanded(
           child: ScrollbarTheme(
             data: ScrollbarThemeData(
-              thumbColor: MaterialStateProperty.all(Colors.lightBlue), // your color
+              thumbColor: MaterialStateProperty.all(Colors.lightBlue),
               thickness: MaterialStateProperty.all(4),
               radius: const Radius.circular(8),
             ),
             child: Scrollbar(
-              thumbVisibility: true, // for Flutter 2.0+ use this instead of isAlwaysShown
-                child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: visibleFields.map(
-                        (field) => DataColumn(
-                      // label: SizedBox(
-                      //   width: 150, // Fixed width for the column header
-                      //   child: Text(field.alias ?? field.name),
-                      // ),
-                          label:  Text(field.alias ?? field.name),
+              controller: _horizontalController,
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                controller: _horizontalController,
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columns: visibleFields.map(
+                    (field) => DataColumn(
+                      label: Text(field.alias.isNotEmpty ? field.alias : field.name),
                     ),
                   ).toList(),
-                rows: relatedFeatures.map((feature) {
-                  return DataRow(
-                    cells: visibleFields.map((field) {
-                        // final value = feature.attributes[field.name];
-
+                  rows: widget.relatedFeatures.map((feature) {
+                    return DataRow(
+                      cells: visibleFields.map((field) {
                         final rawValue = feature.attributes[field.name];
+                        String displayValue = rawValue?.toString() ?? '-';
 
-                        String displayValue;
-
-                        // Check if domain exists and rawValue is not null
-                        final Map<String, dynamic>? domainJson = field.domain?.toJson();
-                        final List<dynamic>? codedValues = domainJson?['codedValues'];
-
-                        if (codedValues != null) {
-                          // Find the codedValue matching rawValue
-                          final match = codedValues.firstWhere(
-                                (cv) => cv['code'] == rawValue,
-                            orElse: () => null,
-                          );
-
-                          if (match != null) {
-                            displayValue = match['name'] ?? rawValue.toString();
-                          } else {
-                            displayValue = rawValue.toString();
+                        if (field.domain is CodedValueDomain) {
+                          final domain = field.domain as CodedValueDomain;
+                          for (final cv in domain.codedValues) {
+                            if (cv.code == rawValue) {
+                              displayValue = cv.name;
+                              break;
+                            }
                           }
-                        } else {
-                          displayValue = rawValue.toString();
+                        } else if (field.type == FieldType.date && rawValue is DateTime) {
+                          displayValue = DateFormat('yyyy-MM-dd').format(rawValue);
                         }
 
                         return DataCell(
-                          Text(displayValue ?? ''),
-                          // SizedBox(
-                          //   width:150,  // Match width to header for alignment
-                          //   child: Text(displayValue ?? ''),
-                          // ),
+                          Text(displayValue),
                         );
                       }).toList(),
-
-                    onSelectChanged: (selected) {
-                      if (selected == true) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DetailsPage(
-                              fields: fields,
-                              data: feature.attributes,
+                      onSelectChanged: (selected) {
+                        if (selected == true) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => DetailsPage(
+                                fields: fields,
+                                feature: feature as ArcGISFeature,
+                              ),
                             ),
-                          ),
-                        );
-                      }
-                    },
-                  );
-                }).toList(),
+                          );
+                        }
+                      },
+                    );
+                  }).toList(),
+                ),
               ),
-            ),
             ),
           ),
         ),
         const SizedBox(height: 16),
         ElevatedButton(
-          onPressed: onAddFeaturePressed,
+          onPressed: widget.onAddFeaturePressed,
           child: const Text('Add Related Feature'),
         ),
         const SizedBox(height: 16),

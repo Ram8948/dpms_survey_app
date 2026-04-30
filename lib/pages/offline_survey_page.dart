@@ -45,6 +45,7 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
   final _outlineKey = GlobalKey();
 
   bool _loadingFeature = false;
+  bool _initializingMap = true;
   FeatureLayer? _selectedFeatureLayer;
   ArcGISFeature? _selectedFeature;
 
@@ -505,10 +506,15 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
                         ),
                       ),
 
-                      if (_loadingFeature)
+                      if (_loadingFeature || _initializingMap)
                         Container(
                           color: Colors.black45,
-                          child: const Center(child: CircularProgressIndicator()),
+                          child: const Center(
+                            child: SpinKitDualRing(
+                              color: Colors.white,
+                              size: 50.0,
+                            ),
+                          ),
                         ),
                     ],
                   ),
@@ -805,25 +811,16 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
     });
     try {
       final documentsDir = await getApplicationDocumentsDirectory();
-      // final mmpkFilePath = path.join(documentsDir.path, 'offline_map', 'p13', 'mobile_map.mmap');
       final offlineMapFolderUri = documentsDir.uri.resolve('offline_map/');
       final mobileMapPackage = MobileMapPackage.withFileUri(
         offlineMapFolderUri,
       );
-      // Note: Some SDK versions accept folder URI; if not, load layers individually
       await mobileMapPackage.load();
-
-      // final file = File(mmpkFilePath);
-      // if (!await file.exists()) {
-      //   throw Exception('Mobile map package file does not exist at $mmpkFilePath');
-      // }
-      //
-      // final mmpkFileUri = Uri.file(mmpkFilePath);
-      // final mobileMapPackage = MobileMapPackage.withFileUri(mmpkFileUri);
-      // await mobileMapPackage.load();
 
       if (mobileMapPackage.maps.isNotEmpty) {
         final map = mobileMapPackage.maps.first;
+        await map.load();
+        await Future.wait(map.operationalLayers.map((layer) => layer.load().catchError((e) => debugPrint('Error loading local layer ${layer.name}: $e'))));
 
         _mapViewController.arcGISMap = map;
         setState(() {
@@ -842,9 +839,11 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
         ).showSnackBar(SnackBar(content: Text('Failed to load local map: $e')));
       }
     } finally {
-      setState(() {
-        _loadingFeature = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loadingFeature = false;
+        });
+      }
     }
   }
 
@@ -1037,47 +1036,51 @@ class _OfflineSurveyPageState extends State<OfflineSurveyPage>
   }
 
   Future<void> onMapViewReady() async {
-    // final portalItem = PortalItem.withPortalAndItemId(
-    //   portal: Portal.arcGISOnline(),
-    //   itemId: 'acc027394bc84c2fb04d1ed317aac674',
-    // );
-    // _map = ArcGISMap.withItem(portalItem);
-    // _mapViewController.arcGISMap = _map;
-    debugPrint("_loadMap : ${widget.portalUri}");
-    final portal = Portal(
-      widget.portalUri,
-      connection: PortalConnection.authenticated,
-    );
-    await portal.load();
-    // final licenseInfo = await portal.fetchLicenseInfo();
-    // final licenseResult = ArcGISEnvironment.setLicenseUsingInfo(licenseInfo);
-    // final licenseResult = ArcGISEnvironment.setLicenseUsingKey(
-    //   'runtimelite,1000,rud6601813501,none,ZZ0RJAY3FLLE9KB10178',
-    // );
-    // print("License licenseResult: ${licenseResult.licenseStatus}");
-    // print("License licenseResult: ${licenseResult.extensionsStatus}");
-    // print("License licenseResult: ${licenseResult.runtimeType}");
-    final portalItem = PortalItem.withPortalAndItemId(
-      portal: portal,
-      itemId: widget.webMapItemId,
-    );
-    await portalItem.load();
+    try {
+      debugPrint("_loadMap : ${widget.portalUri}");
+      final portal = Portal(
+        widget.portalUri,
+        connection: PortalConnection.authenticated,
+      );
+      await portal.load();
 
-    _map = ArcGISMap.withItem(portalItem);
-    await _map?.load();
+      final portalItem = PortalItem.withPortalAndItemId(
+        portal: portal,
+        itemId: widget.webMapItemId,
+      );
+      await portalItem.load();
 
-    if (mounted) {
-      debugPrint("_loadMap map : ${_map}");
-      _mapViewController.arcGISMap = _map;
-      _layers = _map!.operationalLayers;
+      _map = ArcGISMap.withItem(portalItem);
+      await _map?.load();
+
+      if (_map != null) {
+        // Wait for all operational layers to load
+        await Future.wait(_map!.operationalLayers.map((layer) => layer.load().catchError((e) => debugPrint('Error loading layer ${layer.name}: $e'))));
+      }
+
+      if (mounted) {
+        debugPrint("_loadMap map : ${_map}");
+        _mapViewController.arcGISMap = _map;
+        _layers = _map!.operationalLayers;
+      }
+
+      _mapViewController.interactionOptions.rotateEnabled = false;
+      _offlineMapTask = OfflineMapTask.withOnlineMap(_map!);
+
+      hardcodedLocation(_mapViewController, _statusSubscription, _status, _autoPanModeSubscription, _autoPanMode);
+    } catch (e) {
+      debugPrint("Error in onMapViewReady: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading map: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _ready = true;
+          _initializingMap = false;
+        });
+      }
     }
-
-    _mapViewController.interactionOptions.rotateEnabled = false;
-    _offlineMapTask = OfflineMapTask.withOnlineMap(_map!);
-    // _offlineMapTask = OfflineMapTask.withPortalItem(portalItem);
-    // _initializeLocation();
-    hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
-    setState(() => _ready = true);
   }
 
   // Create the system location data source.

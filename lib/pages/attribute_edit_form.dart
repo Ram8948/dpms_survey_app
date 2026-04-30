@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:arcgis_maps/arcgis_maps.dart';
 import 'package:arcgis_maps_toolkit/arcgis_maps_toolkit.dart';
 import 'package:dpmssurveyapp/pages/related_features_page.dart';
@@ -44,6 +45,8 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   bool _attachmentsLoading = true;
   List<ArcGISFeature> _relatedFeatures = [];
   bool _relatedFeaturesLoading = false;
+  List<Attachment> _relatedAttachments = [];
+  bool _relatedAttachmentsLoading = false;
   ArcGISFeatureTable? _mainFeatureTable;
   bool showAttachmentError = false;
   int intpprogress = -1;
@@ -87,33 +90,55 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     debugPrintLong("_editedAttributes objectid ${widget.feature.attributes["objectid"]}");
     debugPrint("_editedAttributes $_editedAttributes");
     debugPrint("widget.feature.featureTable ${widget.feature.featureTable}");
-    if (widget.feature.featureTable is ServiceFeatureTable) {
-      _mainFeatureTable = widget.feature.featureTable as ServiceFeatureTable;
-      relatedTables = _mainFeatureTable?.getRelatedTables();
-    } else if (widget.feature.featureTable is GeodatabaseFeatureTable) {
-      _mainFeatureTable =
-          widget.feature.featureTable as GeodatabaseFeatureTable;
-      relatedTables = _mainFeatureTable?.getRelatedTables();
-    }
+    _mainFeatureTable = widget.feature.featureTable as ArcGISFeatureTable?;
+    relatedTables = _mainFeatureTable?.getRelatedTables();
     schemeIdController.text = _editedAttributes['id']?.toString() ?? '';
     _loadAttachments();
+    _loadRelatedAttachments();
+  }
+
+  Future<void> _loadRelatedAttachments() async {
+    setState(() => _relatedAttachmentsLoading = true);
+    try {
+      final relatedFeatures = await _queryRelatedFeatures(widget.feature);
+      List<Attachment> allRelatedAttachments = [];
+      for (var feature in relatedFeatures) {
+        if (feature.loadStatus != LoadStatus.loaded) {
+          await feature.load();
+        }
+        final attachments = await feature.fetchAttachments();
+        allRelatedAttachments.addAll(attachments);
+      }
+      if (mounted) {
+        setState(() {
+          _relatedAttachments = allRelatedAttachments;
+          _relatedAttachmentsLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading related attachments: $e");
+      if (mounted) {
+        setState(() => _relatedAttachmentsLoading = false);
+      }
+    }
   }
 
   Future<void> _loadAttachments() async {
     try {
+      if (widget.feature.loadStatus != LoadStatus.loaded) {
+        await widget.feature.load();
+      }
       final attachments = await widget.feature.fetchAttachments();
+      debugPrint('Attachment Name: attachments ${attachments.length}');
       setState(() {
         _attachments = attachments;
         _attachmentsLoading = false;
       });
       for (final attachment in _attachments) {
-        final String url = attachment.name; // remote URL to download or view
-        final String contentType =
-            attachment.contentType; // remote URL to download or view
-        final int id = attachment.id; // remote URL to download or view
-        print('Attachment URL: $url');
-        print('Attachment contentType: $contentType');
-        print('Attachment id: $id');
+        final String name = attachment.name;
+        final String contentType = attachment.contentType;
+        final int id = attachment.id;
+        debugPrint('Attachment Name: $name, ContentType: $contentType, ID: $id');
       }
     } catch (e) {
       setState(() => _attachmentsLoading = false);
@@ -170,8 +195,8 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   Future<void> _deleteAttachment(Attachment attachment) async {
     try {
       await widget.feature.deleteAttachment(attachment);
-      await _loadAttachments();
       setState(() {
+        _attachments.remove(attachment);
         // Update showAttachmentError based on current attachments post-delete
         showAttachmentError = (_newAttachments.isEmpty && _attachments.isEmpty);
       });
@@ -346,7 +371,45 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                                 return ListTile(
                                   dense: true,
                                   contentPadding: EdgeInsets.zero,
-                                  leading: const Icon(Icons.attach_file),
+                                  leading: SizedBox(
+                                    width: 40,
+                                    height: 40,
+                                    child: FutureBuilder<Uint8List>(
+                                      future: attachment.fetchData(),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState ==
+                                            ConnectionState.waiting) {
+                                          return const Center(
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          );
+                                        }
+                                        if (snapshot.hasData &&
+                                            (attachment.contentType
+                                                    .startsWith('image/') ||
+                                                attachment.name
+                                                    .toLowerCase()
+                                                    .endsWith('.jpg') ||
+                                                attachment.name
+                                                    .toLowerCase()
+                                                    .endsWith('.jpeg') ||
+                                                attachment.name
+                                                    .toLowerCase()
+                                                    .endsWith('.png'))) {
+                                          return ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                            child: Image.memory(
+                                              snapshot.data!,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          );
+                                        }
+                                        return const Icon(Icons.attach_file);
+                                      },
+                                    ),
+                                  ),
                                   title: Text(
                                     attachment.name,
                                     overflow: TextOverflow.ellipsis,
@@ -359,14 +422,112 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                                     onPressed:
                                         () => _deleteAttachment(attachment),
                                   ),
-                                  onTap: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Open photos: ${attachment.name}',
-                                        ),
-                                      ),
-                                    );
+                                  onTap: () async {
+                                    final data = await attachment.fetchData();
+                                    if (context.mounted) {
+                                      showDialog(
+                                        context: context,
+                                        builder:
+                                            (_) => Dialog(
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Image.memory(data),
+                                                  TextButton(
+                                                    onPressed:
+                                                        () =>
+                                                            Navigator.pop(
+                                                              context,
+                                                            ),
+                                                    child: const Text('Close'),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                      );
+                                    }
+                                  },
+                                );
+                              }),
+                              if (_relatedAttachmentsLoading)
+                                const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(8),
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                ),
+                              ..._relatedAttachments.map((attachment) {
+                                return ListTile(
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: SizedBox(
+                                    width: 40,
+                                    height: 40,
+                                    child: FutureBuilder<Uint8List>(
+                                      future: attachment.fetchData(),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState ==
+                                            ConnectionState.waiting) {
+                                          return const Center(
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          );
+                                        }
+                                        if (snapshot.hasData &&
+                                            (attachment.contentType
+                                                    .startsWith('image/') ||
+                                                attachment.name
+                                                    .toLowerCase()
+                                                    .endsWith('.jpg') ||
+                                                attachment.name
+                                                    .toLowerCase()
+                                                    .endsWith('.jpeg') ||
+                                                attachment.name
+                                                    .toLowerCase()
+                                                    .endsWith('.png'))) {
+                                          return ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                            child: Image.memory(
+                                              snapshot.data!,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          );
+                                        }
+                                        return const Icon(Icons.attach_file, color: Colors.blueGrey);
+                                      },
+                                    ),
+                                  ),
+                                  title: Text(
+                                    "[Related] ${attachment.name}",
+                                    style: const TextStyle(fontStyle: FontStyle.italic),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  onTap: () async {
+                                    final data = await attachment.fetchData();
+                                    if (context.mounted) {
+                                      showDialog(
+                                        context: context,
+                                        builder:
+                                            (_) => Dialog(
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Image.memory(data),
+                                                  TextButton(
+                                                    onPressed:
+                                                        () =>
+                                                            Navigator.pop(
+                                                              context,
+                                                            ),
+                                                    child: const Text('Close'),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                      );
+                                    }
                                   },
                                 );
                               }),
@@ -376,7 +537,26 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                                 return ListTile(
                                   dense: true,
                                   contentPadding: EdgeInsets.zero,
-                                  leading: const Icon(Icons.insert_drive_file),
+                                  leading: SizedBox(
+                                    width: 40,
+                                    height: 40,
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: file.path
+                                              .toLowerCase()
+                                              .endsWith('.pdf')
+                                          ? const Icon(Icons.picture_as_pdf)
+                                          : Image.file(
+                                            file,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    const Icon(
+                                                      Icons.insert_drive_file,
+                                                    ),
+                                          ),
+                                    ),
+                                  ),
                                   title: Text(
                                     file.path.split('/').last,
                                     overflow: TextOverflow.ellipsis,
@@ -388,6 +568,28 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
                                     ),
                                     onPressed: () => _removeNewAttachment(idx),
                                   ),
+                                  onTap: () {
+                                    showDialog(
+                                      context: context,
+                                      builder:
+                                          (_) => Dialog(
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Image.file(file),
+                                                TextButton(
+                                                  onPressed:
+                                                      () =>
+                                                          Navigator.pop(
+                                                            context,
+                                                          ),
+                                                  child: const Text('Close'),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                    );
+                                  },
                                 );
                               }),
                               const SizedBox(height: 4),
@@ -451,61 +653,14 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   }
 
   Future<void> _showRelatedFeaturesDialog() async {
-    setState(() {
-      _relatedFeaturesLoading = true;
-    });
+    if (_mainFeatureTable == null || relatedTables == null || relatedTables!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No related tables found for this feature.')),
+      );
+      return;
+    }
+
     try {
-      // final relatedFeatures = await _queryRelatedFeatures(widget.feature);
-      // setState(() {
-      //   _relatedFeatures = relatedFeatures;
-      //   _relatedFeaturesLoading = false;
-      // });
-
-      // showDialog(
-      //   context: context,
-      //   builder:
-      //       (context) => AlertDialog(
-      //         title: const Text('Related Features'),
-      //         content: SizedBox(
-      //           width: double.maxFinite,
-      //           height: 400, // fixed height for scrolling table
-      //           child:
-      //               _relatedFeaturesLoading
-      //                   ? const Center(child: CircularProgressIndicator())
-      //                   : RelatedFeaturesTable(
-      //                     relatedFeatures: _relatedFeatures,
-      //                     relatedFeatureTable: relatedTables!.first,
-      //                     refreshParent: () async {
-      //                       // Refresh list after CRUD
-      //                       // final freshRelated = await getRelatedFeatures(
-      //                       //   widget.feature,
-      //                       // );
-      //                       final freshRelated = await _queryRelatedFeatures(widget.feature);
-      //                       setState(() {
-      //                         debugPrint(
-      //                           "refreshParent ${_relatedFeatures.length}",
-      //                         );
-      //                         debugPrint(
-      //                           "refreshParent freshRelated ${freshRelated.length}",
-      //                         );
-      //                         _relatedFeatures = freshRelated;
-      //                         debugPrint(
-      //                           "refreshParent ${_relatedFeatures.length}",
-      //                         );
-      //                       });
-      //                     },
-      //                     feature: widget.feature,
-      //                   ),
-      //         ),
-      //         actions: [
-      //           TextButton(
-      //             child: const Text('Close'),
-      //             onPressed: () => Navigator.of(context).pop(),
-      //           ),
-      //         ],
-      //       ),
-      // );
-
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -516,13 +671,9 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
           ),
         ),
       );
-
     } catch (e) {
-      setState(() {
-        _relatedFeaturesLoading = false;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load related features: $e')),
+        SnackBar(content: Text('Failed to open related features: $e')),
       );
     }
   }
@@ -920,7 +1071,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
           final compressedBytes = await FlutterImageCompress.compressWithFile(
             file.path,
             quality: 50, // 0-100, lower for more compression
-            format: ext == ".jpg" ? CompressFormat.jpeg : CompressFormat.png,
+            format: (ext == ".jpg" || ext == ".jpeg") ? CompressFormat.jpeg : CompressFormat.png,
           );
 
           bool attachmentsEnabled = widget.featureTable.hasAttachments ?? false;
@@ -947,7 +1098,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
       debugPrint("_applyEdits Done");
 
       // add first records on related table
-      if (widget.featureTable.layerInfo?.serviceLayerName != 'WTP')
+      if (widget.featureTable.layerInfo?.serviceLayerName != 'WTP' && relatedTables != null && relatedTables!.isNotEmpty)
       {
         ArcGISFeatureTable arcGISFeatureTable = relatedTables!.first;
         await arcGISFeatureTable.load();
@@ -1034,7 +1185,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
             final compressedBytes = await FlutterImageCompress.compressWithFile(
               file.path,
               quality: 50, // 0-100, lower for more compression
-              format: ext == ".jpg" ? CompressFormat.jpeg : CompressFormat.png,
+              format: (ext == ".jpg" || ext == ".jpeg") ? CompressFormat.jpeg : CompressFormat.png,
             );
             bool attachmentsEnabled = arcGISFeatureTable.hasAttachments ?? false;
             debugPrint("attachmentsEnabled $attachmentsEnabled");
@@ -1069,6 +1220,7 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   }
 
   bool hasField(String name) {
+    if (relatedTables == null || relatedTables!.isEmpty) return false;
     return relatedTables!.first.fields.any((f) => f.name.toLowerCase() == name.toLowerCase());
   }
 
@@ -1111,41 +1263,39 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
 
 
   Future<List<ArcGISFeature>> _queryRelatedFeatures(ArcGISFeature feature) async {
+    if (_mainFeatureTable == null) return [];
     List<ArcGISFeature> allRelatedFeatures = [];
     try {
-      // Get the RelationshipInfo for the query
-      // This assumes the relationship is defined in the ServiceFeatureTable metadata
-
-      // Perform the query using your code snippet:
       final relatedResults;
-      if(_mainFeatureTable is GeodatabaseFeatureTable)
-      {
+      if (_mainFeatureTable is GeodatabaseFeatureTable) {
         final relationshipInfoList = (_mainFeatureTable as GeodatabaseFeatureTable).layerInfo?.relationshipInfos;
-        final relationshipInfo = relationshipInfoList?.firstWhere(
-              (info) => info.keyField == "GlobalID",
-          orElse: () => throw Exception('Relationship ID ${feature.attributes['globalid']} not found in layer info.'),
+        if (relationshipInfoList == null || relationshipInfoList.isEmpty) return [];
+
+        final relationshipInfo = relationshipInfoList.firstWhere(
+          (info) => info.keyField.toLowerCase() == "globalid",
+          orElse: () => relationshipInfoList.first,
         );
 
-        relatedResults = await (_mainFeatureTable as GeodatabaseFeatureTable)
-            .queryRelatedFeatures(
+        relatedResults = await (_mainFeatureTable as GeodatabaseFeatureTable).queryRelatedFeatures(
           feature: feature,
-          parameters: RelatedQueryParameters.withRelationshipInfo(relationshipInfo!),
+          parameters: RelatedQueryParameters.withRelationshipInfo(relationshipInfo),
         );
-      }
-      else
-      {
+      } else if (_mainFeatureTable is ServiceFeatureTable) {
         final relationshipInfoList = (_mainFeatureTable as ServiceFeatureTable).layerInfo?.relationshipInfos;
-        final relationshipInfo = relationshipInfoList?.firstWhere(
-              (info) => info.keyField == "GlobalID",
-          orElse: () => throw Exception('Relationship ID ${feature.attributes['globalid']} not found in layer info.'),
+        if (relationshipInfoList == null || relationshipInfoList.isEmpty) return [];
+
+        final relationshipInfo = relationshipInfoList.firstWhere(
+          (info) => info.keyField.toLowerCase() == "globalid",
+          orElse: () => relationshipInfoList.first,
         );
 
-        relatedResults = await (_mainFeatureTable as ServiceFeatureTable)
-            .queryRelatedFeaturesWithFieldOptions(
+        relatedResults = await (_mainFeatureTable as ServiceFeatureTable).queryRelatedFeaturesWithFieldOptions(
           feature: feature,
           queryFeatureFields: QueryFeatureFields.loadAll,
-          parameters: RelatedQueryParameters.withRelationshipInfo(relationshipInfo!),
+          parameters: RelatedQueryParameters.withRelationshipInfo(relationshipInfo),
         );
+      } else {
+        return [];
       }
 
       // // 3. Process the results
@@ -1187,13 +1337,8 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
     } catch (e) {
       debugPrint("allRelatedFeatures; ${e.toString()}");
       return allRelatedFeatures;
-      // setState(() {
-      //   _relatedFeaturesStatus = 'Error querying related features: $e';
-      // });
     }
-
   }
-
 
   List<ArcGISFeatureTable>? relatedTables;
 
@@ -1233,7 +1378,6 @@ class _AttributeEditFormState extends State<AttributeEditForm> {
   // }
 }
 
-// class RelatedFeaturesTable extends StatefulWidget {
 // class RelatedFeaturesTable extends StatefulWidget {
 //   final List<Feature> relatedFeatures;
 //   final ArcGISFeatureTable relatedFeatureTable;

@@ -7,6 +7,7 @@ import 'package:dpmssurveyapp/common/sample_state_support.dart';
 import 'package:dpmssurveyapp/pages/snap_geometry_edits.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 import '../widget/custom_floating_appbar.dart';
 
@@ -29,8 +30,10 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
   final _mapViewController = ArcGISMapView.createController();
 
   bool _loadingFeature = false;
+  bool _initializingMap = true;
   FeatureLayer? _selectedFeatureLayer;
-  ArcGISMap? _map = ArcGISMap.withBasemapStyle(BasemapStyle.arcGISNavigation);
+  // ArcGISMap? _map = ArcGISMap.withBasemapStyle(BasemapStyle.arcGISNavigation);
+  ArcGISMap? _map;
 
   @override
   void initState() {
@@ -105,6 +108,11 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
     _map = ArcGISMap.withItem(portalItem);
     await _map?.load();
 
+    if (_map != null) {
+      // Wait for all operational layers to load
+      await Future.wait(_map!.operationalLayers.map((layer) => layer.load().catchError((e) => debugPrint('Error loading layer ${layer.name}: $e'))));
+    }
+
     if (mounted) {
       debugPrint("_loadMap map : ${_map}");
       _layers = _map!.operationalLayers;
@@ -112,6 +120,7 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
       // Start device location display here
       // _initializeLocation();
       hardcodedLocation(_mapViewController,_statusSubscription,_status,_autoPanModeSubscription,_autoPanMode);
+      setState(() => _initializingMap = false);
     }
   }
 
@@ -612,10 +621,15 @@ class _OnlineSurveyPageState extends State<OnlineSurveyPage>
             // Optionally provide a custom icon:
             // iconBuilder: (context, size, angleRadians) => YourCustomIcon(...),
           ),
-          if (_loadingFeature)
+          if (_loadingFeature || _initializingMap)
             Container(
               color: Colors.black45,
-              child: const Center(child: CircularProgressIndicator()),
+              child: const Center(
+                child: SpinKitDualRing(
+                  color: Colors.white,
+                  size: 50.0,
+                ),
+              ),
             ),
           // Positioned(
           //   bottom: 120,
